@@ -131,7 +131,7 @@ def analyze(json_data, model, temperature, max_tokens):
     client_id = client_id 
     client_secret = client_secret 
 
-    url = "https://id.cisco.com/oauth2/default/v1/token"
+    url = "https://id.domain_name.com/oauth2/default/v1/token"
 
     payload = "grant_type=client_credentials"  # This specifies the type of OAuth2 grant being used, which in this case is client_credentials.
 
@@ -148,12 +148,12 @@ def analyze(json_data, model, temperature, max_tokens):
     
     # use the access_token after regeneration
     openai.api_key = token_response.json()["access_token"]  # access_token is one of the keys obtained
-    openai.api_base = 'https://chat-ai.cisco.com'
+    openai.api_base = 'https://chat-ai.domain_name.com'
     
   
  
     client = AzureOpenAI(
-    azure_endpoint='https://chat-ai.cisco.com',
+    azure_endpoint='https://chat-ai.domain_name.com',
     api_key=token_response.json()["access_token"],
     api_version="2023-08-01-preview"
 )
