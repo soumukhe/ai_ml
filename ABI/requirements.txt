@@ -1,0 +1,31 @@
+streamlit
+streamlit-option-menu
+pandas
+numpy
+matplotlib
+seaborn
+plotly
+pypdf2
+python-dotenv
+watchdog
+openai
+tiktoken
+openai
+scikit-learn
+
+
+pypandoc
+markdown
+pdfkit
+
+
+
+
+### Not Needed now
+# langchain
+# faiss-cpu
+# huggingface_hub
+# langchain_community
+# sentence_transformers
+
+## Usage:  python -m pip install -r  requirements.txt
