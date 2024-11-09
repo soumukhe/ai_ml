@@ -2,6 +2,10 @@
 
 A Python script that uses AgentQL to scrape YouTube channel information and video data.
 
+## Summary of the Current Implementation:
+- AgentQL: This is the primary library being used to construct queries and scrape data from the YouTube channel.
+- Playwright: This library is used to control the browser and navigate to the YouTube channel page, allowing you to interact with the page and extract data.    
+
 ## Features
 
 - Scrapes channel name and subscriber count
