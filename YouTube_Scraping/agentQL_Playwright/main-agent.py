@@ -4,14 +4,24 @@ import agentql
 from playwright.sync_api import sync_playwright
 import json
 import time
+from openai import OpenAI  # Import Grok
 
 # Load environment variables
 load_dotenv(override=True)
 
-# Initialize API key
+# Initialize API keys
 AGENT_API_KEY = os.getenv("AGENT_API_KEY")
+XAI_API_KEY = os.getenv("XAI_API_KEY")  # Add Grok API key
 if not AGENT_API_KEY:
     raise ValueError("AGENT_API_KEY not found in environment variables")
+if not XAI_API_KEY:
+    raise ValueError("XAI_API_KEY not found in environment variables")
+
+# Initialize Grok client
+client = OpenAI(
+    api_key=XAI_API_KEY,
+    base_url="https://api.x.ai/v1",
+)
 
 # Updated query structure to match YouTube's layout
 YOUTUBE_CHANNEL_QUERY = """
@@ -29,6 +39,18 @@ YOUTUBE_CHANNEL_QUERY = """
     }
 }
 """
+
+def get_grok_summary(data):
+    """Get a summary from Grok based on the scraped data."""
+    prompt = f"Please summarize the following YouTube channel data:\n{json.dumps(data, indent=2)}"
+    completion = client.chat.completions.create(
+        model="grok-beta",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": prompt},
+        ],
+    )
+    return completion.choices[0].message.content
 
 def scrape_youtube_channel(channel_url):
     """Scrape YouTube channel data using AgentQL"""
@@ -129,6 +151,11 @@ def main():
             print("\n✅ Channel Information:")
             print("-" * 50)
             print(format_json_output(data))
+            
+            # Get summary from Grok
+            summary = get_grok_summary(data)
+            print("\n📝 Summary:")
+            print(summary)
 
 if __name__ == "__main__":
     main()
