@@ -139,13 +139,14 @@ The Streamlit interface provides:
 - 🎥 Shorts Analysis
   - Grid view of all shorts
   - Title and view count for each short
-  - Copy button for easy title sharing
+  - Copy URL button for easy sharing
+  - Direct YouTube Shorts links
 
 - 🎨 User Experience
   - Responsive design
   - Loading indicators
   - Error handling
-  - Toast notifications
+  - Toast notifications for copy actions
   - Clean card-based layout
 
 ## Example Output
@@ -160,11 +161,11 @@ Shorts Analysis (25 videos):
 ├── Card 1
 │   ├── Title: I Spent 7 Days Buried Alive!
 │   ├── Views: 54M
-│   └── [Copy Title] button
+│   └── [Copy URL] button → https://www.youtube.com/shorts/kuu6nSI74H8
 ├── Card 2
 │   ├── Title: Would You Swim With Sharks For $100,000?
 │   ├── Views: 122M
-│   └── [Copy Title] button
+│   └── [Copy URL] button → https://www.youtube.com/shorts/abc123xyz
 └── ...
 ```
 
