@@ -1,6 +1,16 @@
 # 📊 YouTube Shorts Analyzer
 
-This tool analyzes YouTube channels and extracts information about their Shorts videos, including view counts and titles. It uses Playwright for web automation and AgentQL for task management.
+A powerful tool that analyzes YouTube channels and extracts information about their Shorts videos, including view counts and titles. Features both a command-line interface and a modern web interface built with Streamlit.
+
+## Features
+
+- 🌐 Web Interface with Streamlit
+- 📊 Channel Statistics Analysis
+- 📱 YouTube Shorts Data Extraction
+- 📋 One-Click Copy for Video Titles
+- 📈 View Count Analysis
+- 🎨 Clean Card-Based UI
+- 💻 Command Line Interface Option
 
 ## Requirements
 
@@ -52,27 +62,78 @@ To get an AgentQL API key:
 
 ## Usage
 
+### Web Interface (Recommended)
+
 1. Ensure your Conda environment is activated:
 ```bash
 conda activate youtube-shorts
 ```
 
-2. Run the script:
+2. Launch the Streamlit app:
+```bash
+streamlit run streamlit_app.py
+```
+
+3. Open your web browser (should open automatically) and you'll see:
+   - Input field for YouTube channel URL
+   - "Analyze Channel" button
+   - Results displayed in a clean card layout
+   - Copy buttons for each video title
+
+### Command Line Interface
+
+If you prefer using the command line:
+
+1. Run the script:
 ```bash
 python main.py
 ```
 
-3. When prompted, enter a YouTube channel URL. The URL should be in one of these formats:
-   - `https://www.youtube.com/@ChannelName`
-   - `https://youtube.com/@ChannelName`
+2. Follow the prompts to enter channel URLs
+3. Type 'quit' to exit the program
 
-Example:
-```bash
-Please enter the YouTube channel URL: https://www.youtube.com/@MrBeast
-```
+## Web Interface Features
+
+The Streamlit interface provides:
+
+- 📊 Channel Statistics
+  - Channel Name
+  - Subscriber Count
+  - Total Shorts Count
+
+- 🎥 Shorts Analysis
+  - Grid view of all shorts
+  - Title and view count for each short
+  - Copy button for easy title sharing
+
+- 🎨 User Experience
+  - Responsive design
+  - Loading indicators
+  - Error handling
+  - Toast notifications
+  - Clean card-based layout
 
 ## Example Output
 
+### Web Interface
+```
+Channel Information:
+├── Channel Name: MrBeast
+└── Subscribers: 240M
+
+Shorts Analysis (25 videos):
+├── Card 1
+│   ├── Title: I Spent 7 Days Buried Alive!
+│   ├── Views: 54M
+│   └── [Copy Title] button
+├── Card 2
+│   ├── Title: Would You Swim With Sharks For $100,000?
+│   ├── Views: 122M
+│   └── [Copy Title] button
+└── ...
+```
+
+### CLI Output
 ```
 Channel Information:
 Channel Name: MrBeast
@@ -84,12 +145,6 @@ Total Shorts Found: 25
 Individual Shorts:
 1. Title: I Spent 7 Days Buried Alive!
    Views: 54M
-
-2. Title: Would You Swim With Sharks For $100,000?
-   Views: 122M
-
-3. Title: Extreme Hide & Seek In A Prison!
-   Views: 89M
 ...
 ```
 
@@ -119,13 +174,14 @@ Individual Shorts:
    pip install -r requirements.txt
    ```
 
-5. **Channel Not Found**
-   - Solution: Make sure the channel URL is correct
-   - Try using the channel's handle (@username) instead of custom URL
+5. **Streamlit Interface Not Loading**
+   - Check if Streamlit is installed: `pip install streamlit`
+   - Verify you're running the correct file: `streamlit run streamlit_app.py`
+   - Try clearing your browser cache
 
-6. **No Shorts Found**
-   - Solution: Verify the channel actually has Shorts content
-   - Try increasing the scroll count in get_shorts_data method
+6. **Copy Button Not Working**
+   - Ensure pyperclip is installed: `pip install pyperclip`
+   - On Linux, install xclip: `sudo apt-get install xclip`
 
 ### Performance Issues
 
