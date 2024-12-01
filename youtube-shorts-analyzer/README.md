@@ -1,16 +1,16 @@
 # 📊 YouTube Shorts Analyzer
 
-A powerful tool that analyzes YouTube channels and extracts information about their Shorts videos, including view counts and titles. Features both a command-line interface and a modern web interface built with Streamlit.
+A powerful tool that analyzes YouTube channels and extracts information about their Shorts videos, featuring a modern web interface with a card-based layout for easy viewing and copying of video titles.
 
 ## Features
 
-- 🌐 Web Interface with Streamlit
-- 📊 Channel Statistics Analysis
+- 🌐 Modern Web Interface with Streamlit
+- 📊 Channel Statistics Dashboard
 - 📱 YouTube Shorts Data Extraction
-- 📋 One-Click Copy for Video Titles
-- 📈 View Count Analysis
-- 🎨 Clean Card-Based UI
-- 💻 Command Line Interface Option
+- 🎨 Card-Based Grid Layout
+- 📋 One-Click Copy for Video Titles with Toast Notifications
+- 👁️ View Count Analysis with Visual Indicators
+- 💻 Background Server Mode
 
 ## Requirements
 
@@ -69,16 +69,51 @@ To get an AgentQL API key:
 conda activate youtube-shorts
 ```
 
-2. Launch the Streamlit app:
+2. Launch the app in background mode:
 ```bash
-streamlit run streamlit_app.py
+python streamlit_app.py
 ```
 
-3. Open your web browser (should open automatically) and you'll see:
-   - Input field for YouTube channel URL
-   - "Analyze Channel" button
-   - Results displayed in a clean card layout
-   - Copy buttons for each video title
+The app will:
+- Start automatically in your default browser
+- Run the server in the background
+- Return control to your terminal
+- Display the server URL
+
+3. Interface Features:
+   - Clean, modern dashboard layout
+   - Channel metrics display
+   - 3-column grid of video cards
+   - Copy buttons with confirmation toasts
+   - View counts with visual indicators
+
+4. To stop the server:
+```bash
+pkill -f streamlit
+```
+
+### Interface Layout
+
+```
+📊 YouTube Shorts Analyzer
+├── Channel Information
+│   ├── Channel Name [Metric]
+│   └── Subscriber Count [Metric]
+│
+└── Shorts Analysis Grid
+    ├── Card 1
+    │   ├── Title
+    │   ├── 👁️ View Count
+    │   └── 📋 Copy Button
+    ├── Card 2
+    │   ├── Title
+    │   ├── 👁️ View Count
+    │   └── 📋 Copy Button
+    └── Card 3
+        ├── Title
+        ├── 👁️ View Count
+        └── 📋 Copy Button
+```
 
 ### Command Line Interface
 
@@ -204,3 +239,22 @@ Feel free to submit issues and enhancement requests!
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## New Features
+
+### Card Layout
+- Modern, shadow-boxed design
+- Clear visual hierarchy
+- Responsive grid system
+- Visual indicators for views
+
+### Copy Functionality
+- One-click copy buttons
+- Toast notifications
+- Clipboard API integration
+- Visual feedback
+
+### Metrics Display
+- Clean, modern metrics for channel stats
+- Visual separation of data
+- Clear data hierarchy
