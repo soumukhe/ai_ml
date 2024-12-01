@@ -1,150 +1,141 @@
-# 📊 YouTube Shorts Analyzer
+import os
+from dotenv import load_dotenv
+from playwright.sync_api import sync_playwright
+import time
+from typing import Dict, List
+import re
+import agentql
+import json
 
-This tool analyzes YouTube channels and extracts information about their Shorts videos, including view counts and titles. It uses Playwright for web automation and AgentQL for task management.
+# Load environment variables
+load_dotenv()
 
-## Requirements
+# Verify AgentQL API key is present
+AGENTQL_API_KEY = os.getenv('AGENTQL_API_KEY')
+if not AGENTQL_API_KEY:
+    raise ValueError("AGENTQL_API_KEY not found in environment variables. Please add it to your .env file.")
 
-- Python 3.7 or higher
-- pip (Python package installer)
-- Anaconda or Miniconda
-- AgentQL API key
+# Configure AgentQL with API key
+agentql.configure(api_key=AGENTQL_API_KEY)
 
-## Installation
+class YoutubeShortsAnalyzer:
+    def __init__(self):
+        self.browser = None
+        self.page = None
+        self.playwright = None
+        self.channel_stats = {}
+        self.shorts_data = []
 
-1. Clone this repository:
+    def start_browser(self):
+        """Initialize browser with AgentQL"""
+        self.playwright = sync_playwright().start()
+        self.browser = self.playwright.chromium.launch(headless=True)
+        playwright_page = self.browser.new_page()
+        # Wrap Playwright page with AgentQL
+        self.page = agentql.wrap(playwright_page)
 
-```bash
-git clone <repository-url>
-cd youtube-shorts-analyzer
-```
+    def get_channel_stats(self, channel_url: str) -> Dict:
+        """Get channel statistics from the channel page using AgentQL"""
+        try:
+            self.page.goto(channel_url)
+            time.sleep(2)
 
-2. Create and activate a Conda environment:
+            QUERY = """
+            {
+                channel_name
+                subscriber_count
+            }
+            """
+            
+            channel_data = self.page.query_data(QUERY)
+            
+            print("Raw AgentQL Response:")
+            print(json.dumps(channel_data, indent=2))
+            
+            return {
+                "channel_name": channel_data["channel_name"],
+                "subscribers": channel_data["subscriber_count"]
+            }
+        except Exception as e:
+            print(f"Failed to get channel stats: {str(e)}")
+            raise
 
-```bash
-conda create -n youtube-shorts python=3.12
-conda activate youtube-shorts
-```
+    def get_shorts_data(self, channel_url: str) -> List[Dict]:
+        """Get data for all shorts from the channel using AgentQL"""
+        try:
+            # Navigate to shorts tab
+            shorts_url = f"{channel_url}/shorts"
+            self.page.goto(shorts_url)
+            time.sleep(2)
 
-3. Install required packages:
-```bash
-conda install pip
-pip install -r requirements.txt
-```
+            # Scroll to load more content
+            for i in range(5):
+                self.page.evaluate('window.scrollTo(0, document.body.scrollHeight)')
+                time.sleep(1)
 
-4. Install Playwright browsers:
-```bash
-playwright install chromium
-```
+            # Use AgentQL query to get shorts data
+            QUERY = """
+            {
+                shorts[] {
+                    title
+                    views(just the view count with K/M/B suffix)
+                }
+            }
+            """
+            
+            response = self.page.query_data(QUERY)
+            return [{"title": short["title"], "views": short["views"]} for short in response["shorts"]]
+            
+        except Exception as e:
+            print(f"Failed to get shorts data: {str(e)}")
+            raise
 
-## Environment Setup
+    def analyze_channel(self, channel_url: str):
+        """Main function to analyze a YouTube channel's shorts"""
+        try:
+            self.start_browser()
+            
+            # Get channel statistics
+            self.channel_stats = self.get_channel_stats(channel_url)
+            
+            # Get shorts data
+            self.shorts_data = self.get_shorts_data(channel_url)
 
-1. Create a .env file in the root directory
-2. Add your AgentQL API key to the .env file:
-```env
-AGENTQL_API_KEY=your_agentql_api_key_here
-AGENTQL_LOG_LEVEL=INFO
-```
+        except Exception as e:
+            raise e
+        finally:
+            if self.browser:
+                self.browser.close()
+                self.browser = None
+            if hasattr(self, 'playwright'):
+                self.playwright.stop()
+                self.playwright = None
+            self.page = None
 
-To get an AgentQL API key:
-1. Sign up at [AgentQL's website]
-2. Navigate to your dashboard
-3. Generate a new API key
+def main():
+    while True:
+        channel_url = input("\nPlease enter the YouTube channel URL (or 'quit' to exit): ")
+        
+        if channel_url.lower() in ['quit', 'q', 'exit']:
+            print("\nThank you for using YouTube Shorts Analyzer!")
+            break
+            
+        try:
+            analyzer = YoutubeShortsAnalyzer()  # Create new instance for each analysis
+            analyzer.analyze_channel(channel_url)
+        except Exception as e:
+            print(f"\nError analyzing channel: {str(e)}")
+        
+        # Ask if user wants to analyze another channel
+        while True:
+            continue_analysis = input("\nWould you like to analyze another channel? (yes/no): ").lower()
+            if continue_analysis in ['yes', 'y', 'no', 'n']:
+                break
+            print("Please enter 'yes' or 'no'")
+        
+        if continue_analysis in ['no', 'n']:
+            print("\nThank you for using YouTube Shorts Analyzer!")
+            break
 
-## Usage
-
-1. Ensure your Conda environment is activated:
-```bash
-conda activate youtube-shorts
-```
-
-2. Run the script:
-```bash
-python main.py
-```
-
-3. When prompted, enter a YouTube channel URL. The URL should be in one of these formats:
-   - `https://www.youtube.com/@ChannelName`
-   - `https://youtube.com/@ChannelName`
-
-Example:
-```bash
-Please enter the YouTube channel URL: https://www.youtube.com/@MrBeast
-```
-
-## Example Output
-
-```
-Channel Information:
-Channel Name: MrBeast
-Subscribers: 240M subscribers
-
-Shorts Analysis:
-Total Shorts Found: 25
-
-Individual Shorts:
-1. Title: I Spent 7 Days Buried Alive!
-   Views: 54M
-
-2. Title: Would You Swim With Sharks For $100,000?
-   Views: 122M
-
-3. Title: Extreme Hide & Seek In A Prison!
-   Views: 89M
-...
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **ModuleNotFoundError: No module named 'playwright'**
-   - Solution: Ensure you're in the conda environment (`conda activate youtube-shorts`) and run `pip install -r requirements.txt`
-
-2. **Browser not found error**
-   - Solution: Run `playwright install chromium`
-
-3. **AgentQL API Key Error**
-   - Solution: Verify your API key is correctly set in the .env file
-   - Check if the .env file is in the root directory
-   - Ensure the API key is valid and active
-
-4. **Conda environment issues**
-   - Solution: Try recreating the environment:
-   ```bash
-   conda deactivate
-   conda env remove -n youtube-shorts
-   conda create -n youtube-shorts python=3.12
-   conda activate youtube-shorts
-   conda install pip
-   pip install -r requirements.txt
-   ```
-
-5. **Channel Not Found**
-   - Solution: Make sure the channel URL is correct
-   - Try using the channel's handle (@username) instead of custom URL
-
-6. **No Shorts Found**
-   - Solution: Verify the channel actually has Shorts content
-   - Try increasing the scroll count in get_shorts_data method
-
-### Performance Issues
-
-If the script is running slowly:
-1. Check your internet connection
-2. Adjust the sleep timers in the code
-3. Reduce the number of scroll iterations if you only need recent shorts
-
-### Browser Issues
-
-If you encounter browser-related problems:
-1. Update Playwright: `pip install --upgrade playwright`
-2. Reinstall browsers: `playwright install --force`
-3. Try running in non-headless mode by changing `headless=True` to `headless=False`
-
-## Contributing
-
-Feel free to submit issues and enhancement requests!
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+if __name__ == "__main__":
+    main()
