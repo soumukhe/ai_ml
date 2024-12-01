@@ -24,10 +24,28 @@ A powerful tool that analyzes YouTube channels and extracts information about bo
 
 ## Installation
 
-1. Clone this repository:
+1. Clone the specific subdirectory using sparse checkout:
 
 ```bash
-git clone <repository-url>
+# Create and enter a new directory
+mkdir my_demo && cd my_demo
+
+# Initialize git
+git init
+
+# Add the remote repository
+git remote add -f origin https://github.com/soumukhe/ai_ml.git
+
+# Enable sparse checkout
+git config core.sparseCheckout true
+
+# Specify the subdirectory you want to clone
+echo 'youtube-shorts-analyzer' >> .git/info/sparse-checkout
+
+# Pull the subdirectory
+git pull origin master
+
+# Enter the project directory
 cd youtube-shorts-analyzer
 ```
 
