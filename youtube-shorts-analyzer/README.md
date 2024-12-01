@@ -1,15 +1,18 @@
-# 📊 YouTube Shorts Analyzer
+# 📊 YouTube Shorts & Video Analyzer
 
-A powerful tool that analyzes YouTube channels and extracts information about their Shorts videos, featuring a modern web interface with a card-based layout for easy viewing and copying of video titles.
+A powerful tool that analyzes YouTube channels and extracts information about both Shorts and regular videos, featuring a modern web interface with a tabbed, card-based layout for easy viewing and sharing.
 
 ## Features
 
 - 🌐 Modern Web Interface with Streamlit
 - 📊 Channel Statistics Dashboard
-- 📱 YouTube Shorts Data Extraction
+- 📱 YouTube Shorts Analysis
+- 🎥 Regular Videos Analysis
 - 🎨 Card-Based Grid Layout
-- 📋 One-Click Copy for Video Titles with Toast Notifications
+- 📋 One-Click URL Copying with Toast Notifications
 - 👁️ View Count Analysis with Visual Indicators
+- ⏱️ Video Duration Information
+- 📅 Publication Date Tracking
 - 💻 Background Server Mode
 
 ## Requirements
@@ -95,24 +98,28 @@ pkill -f streamlit
 ### Interface Layout
 
 ```
-📊 YouTube Shorts Analyzer
+📊 YouTube Channel Analyzer
 ├── Channel Information
 │   ├── Channel Name [Metric]
 │   └── Subscriber Count [Metric]
 │
-└── Shorts Analysis Grid
-    ├── Card 1
-    │   ├── Title
-    │   ├── 👁️ View Count
-    │   └── 📋 Copy Button
-    ├── Card 2
-    │   ├── Title
-    │   ├── 👁️ View Count
-    │   └── 📋 Copy Button
-    └── Card 3
-        ├── Title
-        ├── 👁️ View Count
-        └── 📋 Copy Button
+├── 📱 Shorts Tab
+│   └── Grid Layout (3 columns)
+│       ├── Card 1
+│       │   ├── Title
+│       │   ├── 👁️ Views
+│       │   └── 📋 Copy URL
+│       └── ...
+│
+└── 🎥 Videos Tab
+    └── Grid Layout (2 columns)
+        ├── Card 1
+        │   ├── Title
+        │   ├── 👁️ Views
+        │   ├── ⏱️ Duration
+        │   ├── 📅 Published
+        │   └── 📋 Copy URL
+        └── ...
 ```
 
 ### Command Line Interface
@@ -134,20 +141,20 @@ The Streamlit interface provides:
 - 📊 Channel Statistics
   - Channel Name
   - Subscriber Count
-  - Total Shorts Count
 
-- 🎥 Shorts Analysis
-  - Grid view of all shorts
-  - Title and view count for each short
+- 📱 Shorts Analysis Tab
+  - Grid view of all shorts (3 columns)
+  - Title and view count
   - Copy URL button for easy sharing
   - Direct YouTube Shorts links
 
-- 🎨 User Experience
-  - Responsive design
-  - Loading indicators
-  - Error handling
-  - Toast notifications for copy actions
-  - Clean card-based layout
+- 🎥 Videos Analysis Tab
+  - Grid view of regular videos (2 columns)
+  - Title and view count
+  - Video duration
+  - Publication date
+  - Copy URL button for sharing
+  - Direct YouTube video links
 
 ## Example Output
 
@@ -157,15 +164,20 @@ Channel Information:
 ├── Channel Name: MrBeast
 └── Subscribers: 240M
 
-Shorts Analysis (25 videos):
+📱 Shorts Tab (25 videos):
 ├── Card 1
 │   ├── Title: I Spent 7 Days Buried Alive!
 │   ├── Views: 54M
 │   └── [Copy URL] button → https://www.youtube.com/shorts/kuu6nSI74H8
-├── Card 2
-│   ├── Title: Would You Swim With Sharks For $100,000?
-│   ├── Views: 122M
-│   └── [Copy URL] button → https://www.youtube.com/shorts/abc123xyz
+└── ...
+
+🎥 Videos Tab (50 videos):
+├── Card 1
+│   ├── Title: $1 vs $100,000,000 Car!
+│   ├── Views: 150M
+│   ├── Duration: 15:24
+│   ├── Published: 2 weeks ago
+│   └── [Copy URL] button → https://www.youtube.com/watch?v=abc123xyz
 └── ...
 ```
 
@@ -242,6 +254,17 @@ Feel free to submit issues and enhancement requests!
 This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## New Features
+
+### Tabbed Interface
+- Separate tabs for Shorts and Videos
+- Easy navigation between content types
+- Clear visual separation
+
+### Video Analysis
+- Duration information
+- Publication dates
+- Larger cards for regular videos
+- Two-column layout for better readability
 
 ### Card Layout
 - Modern, shadow-boxed design
