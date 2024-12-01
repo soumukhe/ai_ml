@@ -79,12 +79,15 @@ class YoutubeShortsAnalyzer:
                 shorts[] {
                     title
                     views(just the view count with K/M/B suffix)
+                    url(get the full URL of the short)
                 }
             }
             """
             
             response = self.page.query_data(QUERY)
-            return [{"title": short["title"], "views": short["views"]} for short in response["shorts"]]
+            return [{"title": short["title"], 
+                    "views": short["views"],
+                    "url": short["url"]} for short in response["shorts"]]
             
         except Exception as e:
             print(f"Failed to get shorts data: {str(e)}")
