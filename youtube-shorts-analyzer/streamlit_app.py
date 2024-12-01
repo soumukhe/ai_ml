@@ -43,7 +43,7 @@ def run_streamlit_server():
 def main():
     """Main Streamlit application"""
     st.set_page_config(
-        page_title="📊 YouTube Shorts Analyzer",
+        page_title="📊 YouTube Shorts & Video Analyzer",
         page_icon="📊",
         layout="wide"
     )
@@ -60,9 +60,9 @@ def main():
     if 'videos_data' not in st.session_state:
         st.session_state.videos_data = []
     
-    st.title("📊 YouTube Shorts Analyzer")
+    st.title("📊 YouTube Shorts & Video Analyzer")
     st.markdown("""
-        Analyze YouTube channels and extract information about their Shorts videos.
+        Analyze YouTube channels and extract information about their Shorts and regular videos.
         Enter a channel URL below to get started!
     """)
     
