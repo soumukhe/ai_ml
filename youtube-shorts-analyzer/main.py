@@ -25,6 +25,7 @@ class YoutubeShortsAnalyzer:
         self.playwright = None
         self.channel_stats = {}
         self.shorts_data = []
+        self.videos_data = []
 
     def start_browser(self):
         """Initialize browser with AgentQL"""
@@ -93,8 +94,45 @@ class YoutubeShortsAnalyzer:
             print(f"Failed to get shorts data: {str(e)}")
             raise
 
+    def get_videos_data(self, channel_url: str) -> List[Dict]:
+        """Get data for regular videos from the channel using AgentQL"""
+        try:
+            # Navigate to videos tab
+            videos_url = f"{channel_url}/videos"
+            self.page.goto(videos_url)
+            time.sleep(2)
+
+            # Scroll to load more content
+            for i in range(5):
+                self.page.evaluate('window.scrollTo(0, document.body.scrollHeight)')
+                time.sleep(1)
+
+            # Use AgentQL query to get videos data
+            QUERY = """
+            {
+                videos[] {
+                    title
+                    views(just the view count with K/M/B suffix)
+                    url(get the full URL of the video)
+                    duration(get the video duration)
+                    published(get the publish date or time ago)
+                }
+            }
+            """
+            
+            response = self.page.query_data(QUERY)
+            return [{"title": video["title"], 
+                    "views": video["views"],
+                    "url": video["url"],
+                    "duration": video["duration"],
+                    "published": video["published"]} for video in response["videos"]]
+            
+        except Exception as e:
+            print(f"Failed to get videos data: {str(e)}")
+            raise
+
     def analyze_channel(self, channel_url: str):
-        """Main function to analyze a YouTube channel's shorts"""
+        """Main function to analyze a YouTube channel"""
         try:
             self.start_browser()
             
@@ -103,6 +141,9 @@ class YoutubeShortsAnalyzer:
             
             # Get shorts data
             self.shorts_data = self.get_shorts_data(channel_url)
+
+            # Get videos data
+            self.videos_data = self.get_videos_data(channel_url)
 
         except Exception as e:
             raise e
