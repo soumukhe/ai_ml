@@ -153,3 +153,74 @@ streamlit run app.py
 - FAISS for vector storage
 - HuggingFace for embeddings (local model)
 - Streamlit for the web interface
+
+## Hosting on Ubuntu with NGINX Proxy
+
+To host this application on Ubuntu with HTTPS support using a self-signed certificate and NGINX proxy:
+
+### 1. Generate Self-Signed SSL Certificate
+
+```bash
+# Create directory for certificates
+mkdir sslcert
+cd sslcert
+
+# Generate certificate and key
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout mykey.key -out mycert.pem
+```
+
+When prompted, fill in the certificate information (country code, state, locality, etc.).
+
+### 2. Install and Configure NGINX
+
+```bash
+# Install NGINX
+sudo apt update
+sudo apt install nginx
+```
+
+### 3. Configure NGINX as Reverse Proxy
+
+Create or edit the NGINX configuration:
+
+```bash
+sudo vi /etc/nginx/sites-available/default
+```
+
+Add the following configuration:
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name <serverPublicIP>;  # Replace with your server's public IP
+
+    ssl_certificate /home/ubuntu/sslcert/mycert.pem;
+    ssl_certificate_key /home/ubuntu/sslcert/mykey.key;
+
+    client_max_body_size 200M;  # Allows file uploads up to 200MB
+
+    location / {
+        proxy_pass http://localhost:8501;  # Default Streamlit port
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+    }
+}
+```
+
+### 4. Test and Reload NGINX
+
+```bash
+# Test the configuration
+sudo nginx -t
+
+# If test is successful, reload NGINX
+sudo systemctl reload nginx
+```
+
+### 5. Run the Application
+
+Start the Streamlit application as usual, and it will be accessible via HTTPS through the NGINX proxy.
+
+**Note**: When using a self-signed certificate, browsers will show a security warning. This is normal for development/internal use. For production environments, consider using a proper SSL certificate from a trusted certificate authority.
