@@ -38,6 +38,15 @@ if "initialized" not in st.session_state:
     st.session_state.rag_system = RAGSystem(user_id="default")
     st.session_state.initialized = True
 
+# Get users once and reuse
+users = RAGSystem.get_all_users()
+user_ids = [user["user_id"] for user in users]
+
+# Ensure user_id is valid
+if st.session_state.user_id not in user_ids:
+    st.session_state.user_id = "default"
+    st.session_state.rag_system = RAGSystem(user_id="default")
+
 def switch_user(new_user_id: str):
     """Switch to a different user."""
     if new_user_id != st.session_state.user_id:
@@ -139,15 +148,11 @@ with tab1:
                     st.write(f"- Profile exists: {os.path.exists(os.path.join(user_dir, 'profile.json'))}")
                     st.write(f"- Docs exists: {os.path.exists(os.path.join(user_dir, 'docs'))}")
         
-        # Get valid users
-        users = RAGSystem.get_all_users()
-        user_ids = ["default"] + [user["user_id"] for user in users if user["user_id"] != "default"]
-        
         # Direct user selection
         selected_user = st.radio(
             "Select User",
             user_ids,
-            index=0 if st.session_state.user_id == "default" else user_ids.index(st.session_state.user_id),
+            index=user_ids.index(st.session_state.user_id),
             horizontal=True
         )
     
@@ -201,14 +206,27 @@ with tab1:
         submit_button = st.form_submit_button("Create User")
         if submit_button:
             if new_user_id and new_user_id not in user_ids:
-                # Create new user
-                new_system = RAGSystem(user_id=new_user_id)
-                if new_user_desc or new_user_tags:
-                    new_system.update_profile(new_user_desc, new_user_tags)
-                # Switch to new user
-                switch_user(new_user_id)
+                try:
+                    # Create new user
+                    new_system = RAGSystem(user_id=new_user_id)
+                    # Ensure profile is created
+                    new_system.update_profile(
+                        description=new_user_desc if new_user_desc else "",
+                        tags=new_user_tags if new_user_tags else []
+                    )
+                    # Switch to new user and force page refresh
+                    st.session_state.user_id = new_user_id
+                    st.session_state.rag_system = new_system
+                    st.success(f"User {new_user_id} created successfully!")
+                    time.sleep(1)  # Give time for the filesystem to update
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error creating user: {str(e)}")
             else:
-                st.error("Please enter a unique user ID")
+                if not new_user_id:
+                    st.error("Please enter a user ID")
+                else:
+                    st.error("This user ID already exists. Please choose a different one.")
 
     # Current User Profile
     if st.session_state.rag_system:

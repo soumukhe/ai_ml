@@ -63,10 +63,10 @@ class RAGSystem:
             encode_kwargs={'normalize_embeddings': True}
         )
         self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=3000,
-            chunk_overlap=600,
+            chunk_size=800,
+            chunk_overlap=150,
             length_function=len,
-            separators=["\n\n", "\n", " ", ""]
+            separators=["\n\n", "\n", ".", " ", ""]
         )
         
         try:
@@ -76,8 +76,8 @@ class RAGSystem:
             
             self.llm = ChatOpenAI(
                 model="gpt-4o-mini",
-                temperature=0.3,
-                max_tokens=4000
+                temperature=0.2,
+                max_tokens=8000
             )
         except Exception as e:
             print(f"Error initializing OpenAI LLM: {str(e)}")
@@ -145,27 +145,31 @@ class RAGSystem:
             # Create prompt template
             prompt = PromptTemplate(
                 input_variables=["context", "chat_history", "question"],
-                template="""You are a helpful AI assistant with access to a knowledge base of documents. 
-                When answering questions:
-                1. Use information from the provided documents
-                2. If a term or concept was explained in a previous answer, you can refer to and build upon that explanation
-                3. If you don't find specific information in the documents, say so clearly
-                4. Always maintain context from previous questions in the conversation
-                5. If a previous answer provides relevant context, use it to enhance your current answer
-
+                template="""You are a helpful AI assistant with access to a knowledge base of documents. Use the following guidelines to provide detailed, comprehensive answers:
+                1. Thoroughly analyze all provided document context
+                2. Include specific details, examples, and explanations from the documents
+                3. If relevant, cite specific sections or quotes from the documents
+                4. Organize your response in a clear, structured manner
+                5. If a concept needs clarification, provide additional context
+                6. If you find conflicting information, acknowledge and explain the differences
+                7. If you're not certain about something, clearly state your level of confidence
+                8. Use previous conversation context to enhance your current answer
+                9. If the documents don't contain enough information, clearly state what's missing
                 Current conversation context: {chat_history}
                 
                 Context from documents: {context}
-
                 Question: {question}
                 
-                Answer:"""
+                Detailed Answer:"""
             )
 
             self.qa_chain = ConversationalRetrievalChain.from_llm(
                 llm=self.llm,
                 retriever=self.vectorstore.as_retriever(
-                    search_kwargs={"k": 12}
+                    search_kwargs={
+                        "k": 15,
+                        "fetch_k": 30
+                    }
                 ),
                 memory=self.memory,
                 return_source_documents=True,
