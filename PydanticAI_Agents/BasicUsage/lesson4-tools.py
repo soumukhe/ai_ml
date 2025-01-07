@@ -13,8 +13,11 @@ This example shows agent with tools
 You can use both decorators in the same agent.
 You can also pass tools as a list to the agent: agent = Agent(model, tools=[get_current_time, get_bank_balance])
 
-Outputs: (notice that the prompt (system prompt, + user prompt) makes it call both tools)
+Observation: (notice that the prompt (system prompt, + user prompt) makes it call both tools)
+- System Prompt: def system_prompt(ctx: RunContext[User]):
+- User Prompt: result = agent.run_sync("What is my bank balance?  and what is the current time? ", deps=deps)
 
+Outputs:
 - Mr. Soumitra, your bank balance is $100,000 and the current time is 09:39:57 on January 7, 2025. Would you like a drink?
 - Ms. Ria, your bank balance is $200,000, and the current time is 09:47:23 on January 7, 2025. Would you like a drink?
 - I'm sorry, Milly, but I am not authorized to access your bank balance. However, I can tell you that the current time is 09:49 AM on January 7, 2025. 
