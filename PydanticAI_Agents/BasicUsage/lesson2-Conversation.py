@@ -1,5 +1,6 @@
 """
-This example shows conversation with the agent
+This example shows conversation with the agent.
+By default LLMs are stateless. You need to add conversation history with query for it to act stateful.
 
 You: hello
 Agent: Hello! How can I assist you today?
