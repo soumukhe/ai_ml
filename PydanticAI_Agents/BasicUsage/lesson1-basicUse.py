@@ -15,7 +15,7 @@ details={'accepted_prediction_tokens': 0, 'audio_tokens': 0, 'reasoning_tokens':
 type: <class 'pydantic_ai.result.RunResult'>
 --------------------------------
 result.data: Hello! How can I assist you today?
-(pydantic) (base) SOUMUKHE-M-2DJG:pydantic-Vichu so
+
 
 """
 import os
