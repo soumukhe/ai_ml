@@ -1,0 +1,10 @@
+streamlit
+pandas
+numpy
+sentence-transformers
+scikit-learn
+transformers
+torch
+tqdm
+openpyxl
+protobuf
