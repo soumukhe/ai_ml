@@ -143,7 +143,7 @@ Follow these steps to set up Logfire for your project:
    ```
 4. **Set Up a Project**: Configure your project using the command:
    ```bash
-   logfire project use [project-name]
+   logfire projects use [project-name]
    ```
 
 ---
