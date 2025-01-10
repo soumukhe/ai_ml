@@ -7,8 +7,10 @@ from dotenv import load_dotenv
 
 """
 make sure to create logfire account and create a project
-logfire auth from terminal
-logfire projects use the project name
+
+from terminal:
+logfire auth 
+logfire projects use <the project name>
 
 In this example, we are using the OpenAI model gpt-4o-mini and the output model Calculation1.
 The Calculation1 model is a Pydantic BaseModel that captures the result of a calculation.
