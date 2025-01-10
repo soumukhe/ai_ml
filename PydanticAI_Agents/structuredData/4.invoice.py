@@ -11,6 +11,25 @@ For creating the base model, you can get help from claude, or local GPT4ALL with
 
 The first part of the code and the second part of the code are independent in terms of how they operate.
 
+1. First Part: Generating an Invoice
+
+In the first part of the code:
+	•	You provide a prompt asking the agent to generate an invoice for specific services (e.g., consulting, research, etc.) with the associated details (e.g., tax rate, payment terms).
+	•	The agent uses the prompt, along with the OpenAIModel, to generate structured data. This output is then validated and parsed into the Invoice model.
+
+The Invoice model only ensures that the output of the LLM conforms to the specified structure. The LLM itself is creating this data based on the text prompt and its own language generation capabilities—it is not dependent on any external file.
+
+2. Second Part: Extracting Data from invoice.md
+
+In the second part of the code:
+	•	You provide the raw invoice data stored in invoice.md as a string.
+	•	The agent processes this data using the same OpenAIModel and extracts information from it into the fields defined in the Invoice model.
+
+The key difference here is the input data:
+	•	In this part, the input comes from invoice.md, a text file containing invoice details.
+	•	The agent uses its language understanding capabilities to parse the text, identify relevant fields (like invoice_number, date_issued), and match them to the fields in the Invoice model.
+
+
 Output:
 
 01:19:36.727 agent run prompt=Can you generate an invoice for a consulting service provided ...s 20 percent and the payment should be made via bank transfer.
