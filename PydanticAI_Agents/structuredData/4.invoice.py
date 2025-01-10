@@ -9,8 +9,46 @@ import json
 """
 For creating the base model, you can get help from claude, or local GPT4ALL with Quen-coding model
 
+The first part of the code and the second part of the code are independent in terms of how they operate.
+
 Output:
 
+01:19:36.727 agent run prompt=Can you generate an invoice for a consulting service provided ...s 20 percent and the payment should be made via bank transfer.
+01:19:36.729   preparing model and tools run_step=1
+01:19:36.729   model request
+Logfire project URL: https://logfire.pydantic.dev/soumukhe/my-first-project
+01:19:39.273   handle model response
+01:19:39.278 Text prompt LLM results: invoice_number='INV-2022-001' date_issued='2022-01-15' due_dat...x_amount=230.0 total_amount_due=1380.0 payment_instructions={}
+01:19:39.279 Result type: <class '__main__.Invoice'>
+--------------------------------
+{
+    "invoice_number": "INV-2022-001",
+    "date_issued": "2022-01-15",
+    "due_date": "2022-02-15",
+    "currency": "USD",
+    "customer_name": "Acme Inc.",
+    "company": "Acme Inc.",
+    "address": "Not Provided",
+    "services_provided": [
+        "Consulting (10 hours at $100/hour)",
+        "Research (5 hours at $50/hour)",
+        "Report Writing (3 hours at $75/hour)"
+    ],
+    "subtotal": 1150.0,
+    "tax_rate": 20.0,
+    "tax_amount": 230.0,
+    "total_amount_due": 1380.0,
+    "payment_instructions": {}
+}
+01:19:39.280 agent run prompt=Can you extract the following information from the invoice? Th...tions.com._
+
+Would you like adjustments or additional details?
+01:19:39.280   preparing model and tools run_step=1
+01:19:39.281   model request
+01:19:41.916   handle model response
+01:19:41.923 Invoice markdown prompt LLM results: invoice_number='INV-2024-00123' date_issued='2024-12-29' due_d...x_amount=835.0 total_amount_due=9185.0 payment_instructions={}
+01:19:41.924 Result type: <class '__main__.Invoice'>
+--------------------------------
 {
     "invoice_number": "INV-2024-00123",
     "date_issued": "2024-12-29",
@@ -74,6 +112,12 @@ result = agent.run_sync("Can you generate an invoice for a consulting service pr
 
 logfire.notice('Text prompt LLM results: {result}', result = str(result.data))
 logfire.info('Result type: {result}', result = type(result.data))
+
+
+print("--------------------------------")
+
+json_output = result.data.model_dump_json(indent=4)
+print(json_output)
 
 # Read the markdown file
 with open('data/invoice.md', 'r') as file:
