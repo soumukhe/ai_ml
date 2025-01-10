@@ -8,10 +8,10 @@ from dotenv import load_dotenv
 
 """
 This code is used to generate a structured resume for a software engineer.
-It uses the OpenAI API to generate the resume and the data is then extracted from the system Prompt file.
+It uses the OpenAI API to generate the resume based on the data in the markdown file.
 
-Notice here how the agent is generating the resume and then extracting the data from the system prompt file.
-the main class is Resume and the agent is generating the data and then extracting the data from the system prompt file.
+Notice here how the agent is generating the resume and then extracting the data from the markdown file.
+the main class is Resume and the agent is generating the data and then extracting the data from the markdown file.
 
 agent = Agent(model=model, result_type=Resume, system_prompt=f'You are a technical...')
 
@@ -93,7 +93,6 @@ Logfire project URL: https://logfire.pydantic.dev/soumukhe/my-first-project
         "Certified ScrumMaster (CSM)"
     ]
 }
-
 """
 
 load_dotenv()
@@ -133,12 +132,18 @@ class Resume(BaseModel):
 
 
 
+
+# Read the markdown file
+with open('data/resume.md', 'r') as file:
+    resume_data = file.read()
+
 # Define the agent
-agent = Agent(model=model, result_type=Resume, system_prompt=f'You are a technical writer and an HR expert specialized in writing resumes. Write a resume for a Software Engineer with 20 years of progressive experience, mostly on the US West Coast, spanning companies such as Google, Netflix and Tesla. Make it look good for recruiters and hiring managers. It must pass ATS systems and be visually appealing. Include a summary, experience, education, skills, and certifications. Include a minimum of 10 work experiences with real companies. The resume must be at least 5 pages long. Include critical details on projects and responsibilities during employment.')
+agent = Agent(model=model, result_type=Resume, system_prompt=f'You are a technical writer and an HR expert specialized in writing resumes. Write a resume for a Software Engineer based on the following data: {resume_data}')
 
 # Run the agent
-result = agent.run_sync("Wrtie a resume.")
-logfire.notice('Results from LLM: {result}', result = str(result.data))
+# result = agent.run_sync(f"Can you extract the following information from the resume? The raw data is {resume_data}")
+result = agent.run_sync("Write a resume.")
+logfire.notice('Resume markdown prompt LLM results: {result}', result = str(result.data))
 logfire.info('Result type: {result}', result = type(result.data))
 
 print("--------------------------------")
