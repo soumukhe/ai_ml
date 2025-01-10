@@ -18,6 +18,9 @@ The agent is defined using the Agent class from pydantic_ai.
 The agent is run using the run_sync method, which runs the agent synchronously and returns the result.
 The result is logged using logfire.
 
+- define class for structured output:  I defined Calculation1
+- call the agent with the class name: agent = Agent(model=model, result_type=Calculation1)
+
 Output:
 
 23:56:58.821 agent run prompt=What is 100 + 300?
