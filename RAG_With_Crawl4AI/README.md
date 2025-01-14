@@ -26,6 +26,43 @@ A powerful document question-answering system that combines web crawling, RAG (R
   - Document status tracking
   - Conversation history management
 
+## Technical Specifications
+
+### Models and Database
+- **Embedding Model**: OpenAI's `text-embedding-3-small`
+  - Latest embedding model from OpenAI
+  - Optimized for high-quality semantic search
+  - 1536-dimensional embeddings
+  - Excellent performance for technical documentation
+
+- **Language Model**: OpenAI's `gpt-4o`
+  - Advanced reasoning capabilities
+  - High-quality code understanding
+  - Context window: 128,000 tokens
+  - Maximum response length: 16,384 tokens
+
+- **Vector Database**: ChromaDB
+  - Persistent storage for embeddings
+  - Efficient similarity search
+  - Automatic metadata handling
+  - Real-time updates and changes detection
+  - Collection-based organization for better scalability
+
+### System Architecture
+- **RAG Pipeline**:
+  1. Document Processing → Chunking → Embedding
+  2. Vector Storage in ChromaDB
+  3. Similarity Search on Query
+  4. Context Assembly and LLM Generation
+  5. Response Formatting and Presentation
+
+- **Performance Features**:
+  - Smart document change detection
+  - Efficient chunk size management (1500 tokens)
+  - Code block preservation
+  - Automatic metadata tracking
+  - Conversation history management
+
 ## Installation
 
 1. **Clone the Repository**
