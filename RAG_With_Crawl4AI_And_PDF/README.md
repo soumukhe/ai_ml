@@ -124,11 +124,22 @@ pip install python-magic  # Linux-specific dependency
    cd RAG_With_Crawl4AI_And_PDF
    ```
 
-2. Create a virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
+2. Create a virtual environment (choose one method):
+
+   **Method 1**: Using conda (recommended):
+   ```bash
+   # Create new conda environment
+   conda create -n crawl4ai_rag python=3.11
+   
+   # Activate the environment
+   conda activate crawl4ai_rag
+   ```
+
+   **Method 2**: Using venv:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
 
 3. Install dependencies:
 ```bash
