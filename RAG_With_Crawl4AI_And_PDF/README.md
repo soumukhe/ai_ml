@@ -150,7 +150,14 @@ pip install --upgrade pip
 pip install -r requirements.txt
 
 # Install browser for web crawling
-playwright install
+python -m playwright install --with-deps chromium
+
+# Run crawl4AI setup (from console)
+crawl4ai-setup
+
+# Verify crawl4AI installation
+crawl4ai-doctor
+
 ```
 
 4. Set up environment variables:
