@@ -21,7 +21,7 @@ from supabase import create_client
 from openai import AsyncOpenAI
 import asyncio
 
-# ... (Your existing code here)
+######  defining the code for similarity search
 
 load_dotenv()
 
@@ -214,8 +214,8 @@ async def get_page_content(ctx: RunContext[PydanticAIDeps], url: str) -> str:
 
 
 
-####  End of existing code
-# Now Query the database
+
+###### Now Query the database
 
 supabase_url = os.getenv("SUPABASE_URL")
 supabase_key = os.getenv("SUPABASE_SERVICE_KEY")
