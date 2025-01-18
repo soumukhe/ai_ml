@@ -21,7 +21,7 @@ from supabase import create_client
 from openai import AsyncOpenAI
 import asyncio
 
-# ... (Your existing code here)
+######  defining the code for similarity search
 
 load_dotenv()
 
@@ -123,8 +123,8 @@ async def retrieve_relevant_documentation(ctx: RunContext[PydanticAIDeps], user_
         print(f"Error retrieving documentation: {e}")
         return f"Error retrieving documentation: {str(e)}"
 
-####  End of existing code
-# Now Query the database
+
+######  Now Query the database
 
 supabase_url = os.getenv("SUPABASE_URL")
 supabase_key = os.getenv("SUPABASE_SERVICE_KEY")
