@@ -145,6 +145,30 @@ DELETE FROM site_pages;
 DROP TABLE site_pages;
 ```
 
+#### For complete sql db reset:
+```sql
+# Drop old tables
+
+-- First disable RLS
+ALTER TABLE IF EXISTS pdf_pages DISABLE ROW LEVEL SECURITY;
+
+-- Drop the policy
+DROP POLICY IF EXISTS "Allow public read access" ON pdf_pages;
+
+-- Drop the function
+DROP FUNCTION IF EXISTS match_pdf_pages;
+
+-- Drop the indexes
+DROP INDEX IF EXISTS idx_pdf_pages_metadata;
+DROP INDEX IF EXISTS pdf_pages_embedding_idx;
+
+-- Drop the table
+DROP TABLE IF EXISTS pdf_pages;
+
+-- Drop the extension (optional - you might want to keep this if other tables use it)
+-- DROP EXTENSION IF EXISTS vector;
+```
+
 ### Docker Commands
 ```bash
 # Stop and remove containers with volumes
