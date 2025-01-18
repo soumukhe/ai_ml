@@ -10,8 +10,7 @@ This example shows agent with tools
 - @agent.tool_plain: for plain text tools (no deps in the tool function)
 - @agent.tool: for tools that return a value (use deps in the tool function)
 
-also another one:
-- @pydantic_ai_expert.tool
+
 
 You can use both decorators in the same agent.
 You can also pass tools as a list to the agent: agent = Agent(model, tools=[get_current_time, get_bank_balance])
