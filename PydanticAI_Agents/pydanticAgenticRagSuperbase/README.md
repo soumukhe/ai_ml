@@ -1,4 +1,4 @@
-# PDF Document Question Answering System
+# 🤖 PDF Document Question Answering System
 
 A Python project that demonstrates how to build an Agentic RAG (Retrieval Augmented Generation) system for PDF documents using Streamlit, OpenAI, PydanticAI, and Supabase. The system leverages intelligent agents to provide enhanced document retrieval and question answering capabilities through a modern web interface.
 
