@@ -37,6 +37,44 @@ main()
   │     │     └── Repeat for all PDFs
   │     └── Gather all tasks
   └── Exit program
+
+
+Main Components
+	1.	Imports and Initialization: The script imports necessary libraries and initializes clients for OpenAI and Supabase.
+	2.	Data Structure: It defines a `ProcessedPage` dataclass to represent processed PDF pages.
+	3.	Text Processing Functions:
+	•	`chunk_text()`: Splits text into smaller chunks.
+	•	`get_title_and_summary()`: Uses OpenAI’s GPT model to generate titles for text chunks.
+	•	`get_embedding()`: Obtains text embeddings using OpenAI’s embedding model.
+	4.	PDF Processing Functions:
+	•	`process_chunk()`: Processes individual text chunks.
+	•	`insert_page()`: Inserts processed pages into Supabase.
+	•	`process_and_store_pages()`: Handles the processing and storage of PDF pages.
+	•	`get_pdf_files()`: Retrieves PDF files from a specified directory.
+	•	`process_pdfs_parallel()`: Processes multiple PDFs concurrently.
+	5.	Main Execution: The `main()` function orchestrates the entire process.
+
+    Workflow
+	1.	The script starts by loading PDF files from a “pdf_docs” directory.
+	2.	It then processes these PDFs in parallel, with a concurrency limit.
+	3.	For each PDF:
+	•	Text is extracted from each page.
+	•	The text is split into chunks if necessary.
+	•	Each chunk is processed to obtain a title and embedding.
+	•	The processed information is stored in Supabase.
+
+Key Features
+	•	Asynchronous Processing: The script uses Python’s `asyncio` for concurrent operations.
+	•	OpenAI Integration: It utilizes OpenAI’s API for text summarization and embeddings.
+	•	Supabase Storage: Processed data is stored in a Supabase database.
+	•	Error Handling: The script includes error handling and logging throughout.    
+
+This code does not use or reference “pedanticAI” anywhere. The script primarily uses OpenAI’s models for text processing and does not incorporate any system or library named pedanticAI.
+The main AI components used are:
+	1.	OpenAI’s GPT model (likely GPT-4) for generating titles.
+	2.	OpenAI’s text embedding model for creating text embeddings.
+
+  
 """
 
 # Initialize OpenAI and Supabase clients
