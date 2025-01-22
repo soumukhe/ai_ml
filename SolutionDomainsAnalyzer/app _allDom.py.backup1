@@ -12,8 +12,6 @@ import time
 import shutil
 import io
 import warnings
-import sys
-import contextlib
 
 # Suppress specific PyTorch warning
 warnings.filterwarnings('ignore', message='.*Examining the path of torch.classes.*')
@@ -98,39 +96,18 @@ def clean_text(text):
     text = ' '.join(text.split())
     return text
 
-@contextlib.contextmanager
-def suppress_stdout_stderr():
-    """Context manager to suppress stdout and stderr"""
-    # Save current stdout/stderr
-    old_stdout = sys.stdout
-    old_stderr = sys.stderr
-    
-    # Redirect stdout/stderr to devnull
-    devnull = open(os.devnull, 'w')
-    sys.stdout = devnull
-    sys.stderr = devnull
-    
-    try:
-        yield
-    finally:
-        # Restore stdout/stderr
-        sys.stdout = old_stdout
-        sys.stderr = old_stderr
-        devnull.close()
-
 @st.cache_resource
 def load_models():
     """Load and cache the ML models"""
-    with suppress_stdout_stderr():
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-        embedding_model.to(device)
-        
-        classifier = pipeline("zero-shot-classification",
-                            model="facebook/bart-large-mnli",
-                            clean_up_tokenization_spaces=True,
-                            multi_label=True,
-                            device=device)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+    embedding_model.to(device)
+    
+    classifier = pipeline("zero-shot-classification",
+                        model="facebook/bart-large-mnli",
+                        clean_up_tokenization_spaces=True,
+                        multi_label=True,
+                        device=device)
     return embedding_model, classifier
 
 def get_embeddings_batch(texts, model, batch_size=32):
@@ -311,42 +288,6 @@ if uploaded_file:
     if sheet_name:
         # Load data and show domain selection
         df = pd.read_excel(file_path, sheet_name=sheet_name)
-        
-        # Convert Created Date to datetime with robust error handling
-        try:
-            # First try parsing with specific format M/D/YYYY
-            df['Created Date'] = pd.to_datetime(df['Created Date'], format='%m/%d/%Y', errors='coerce')
-            
-            # If any NaT values, try with other common formats
-            if df['Created Date'].isna().any():
-                # Try parsing without specific format
-                df['Created Date'] = pd.to_datetime(df['Created Date'], errors='coerce')
-            
-            # Filter out rows with invalid dates
-            valid_dates_mask = ~df['Created Date'].isna()
-            invalid_count = (~valid_dates_mask).sum()
-            if invalid_count > 0:
-                st.info(f"Filtered out {invalid_count} rows with invalid or missing dates")
-            
-            df = df[valid_dates_mask].copy()
-            
-            if len(df) == 0:
-                st.error("No valid data found after filtering dates")
-                st.stop()
-            
-            # Get min and max dates from valid dates
-            min_date = df['Created Date'].min().date()
-            max_date = df['Created Date'].max().date()
-            
-        except Exception as e:
-            st.error(f"""
-                Error processing dates in 'Created Date' column.
-                Expected format is M/D/YYYY (example: 2/16/2024).
-                
-                Error details: {str(e)}
-            """)
-            st.stop()
-        
         unique_domains = df['Solution Domain'].unique().tolist()
         
         # Add "ALL Domains" option at the beginning of the list
@@ -358,70 +299,8 @@ if uploaded_file:
             format_func=lambda x: f"Domain: {x}"
         )
         
-        # Show time period selection for all domains
-        time_period = st.sidebar.radio(
-            "Select Time Period",
-            ["Entire Time Period", "Custom Time Period"],
-            key="time_period"
-        )
-        
-        if time_period == "Custom Time Period":
-            # Add helper text for date format
-            st.sidebar.caption("Note: Date selector shows YYYY/MM/DD format, but dates will be displayed as M/D/YYYY in results")
-            
-            col1, col2 = st.sidebar.columns(2)
-            with col1:
-                start_date = st.date_input("Start Date", 
-                                         min_value=min_date,
-                                         max_value=max_date,
-                                         value=min_date,
-                                         key="start_date")
-            with col2:
-                end_date = st.date_input("End Date",
-                                       min_value=min_date,
-                                       max_value=max_date,
-                                       value=max_date,
-                                       key="end_date")
-            
-            # Validate date range
-            if start_date > end_date:
-                st.sidebar.error("End date must be after start date")
-                st.stop()
-            
-            # Show date range info in M/D/YYYY format
-            st.sidebar.info(
-                f"Available date range: "
-                f"{min_date.strftime('%-m/%-d/%Y')} to "
-                f"{max_date.strftime('%-m/%-d/%Y')}"
-            )
-            
-            # Show selected date range in M/D/YYYY format
-            st.sidebar.success(
-                f"Selected range: "
-                f"{start_date.strftime('%-m/%-d/%Y')} to "
-                f"{end_date.strftime('%-m/%-d/%Y')}"
-            )
-        
         if selected_domain and st.sidebar.button("Process Domain"):
             with st.spinner(f'Processing data for domain{"s" if selected_domain == "ALL Domains" else ""}: {selected_domain}...'):
-                # Apply date filter if custom time period is selected
-                if time_period == "Custom Time Period":
-                    # Convert dates to datetime for filtering
-                    start_datetime = pd.Timestamp(start_date)
-                    end_datetime = pd.Timestamp(end_date) + pd.Timedelta(days=1) - pd.Timedelta(microseconds=1)
-                    
-                    # Filter DataFrame by date range
-                    df = df[
-                        (df['Created Date'] >= start_datetime) & 
-                        (df['Created Date'] <= end_datetime)
-                    ]
-                    
-                    if len(df) == 0:
-                        st.error("No data found in the selected date range")
-                        st.stop()
-                    
-                    st.info(f"Filtered to {len(df)} records between {start_date} and {end_date}")
-                
                 if selected_domain == "ALL Domains":
                     # Process all domains
                     all_domains_df = pd.DataFrame()  # Empty DataFrame to store all results
@@ -487,12 +366,8 @@ if uploaded_file:
                         # Compute similarity matrix
                         similarity_matrix = cosine_similarity(normalized_embeddings)
                         
-                        # Initialize duplicates columns
+                        # Initialize duplicates column
                         all_domains_df['possibleDuplicates'] = ""
-                        all_domains_df['CrossDomainDuplicates'] = ""  # New column for cross-domain duplicates
-                        
-                        # Track original rows that have duplicates
-                        original_rows = set()
                         
                         # Find duplicates across all domains
                         threshold = 0.95
@@ -500,23 +375,11 @@ if uploaded_file:
                             for j in range(i):
                                 if similarity_matrix[i, j] > threshold:
                                     duplicate_info = text_to_row_map[j]
-                                    current_info = text_to_row_map[i]
-                                    current_idx = current_info['df_index']
-                                    original_idx = duplicate_info['df_index']
-                                    
-                                    # Add original row to tracking set
-                                    original_rows.add(original_idx)
-                                    
-                                    # Create duplicate message
-                                    duplicate_msg = f"Duplicate of Row {duplicate_info['original_row']} in domain '{duplicate_info['domain']}'"
-                                    
-                                    # Check if this is a cross-domain duplicate
-                                    if duplicate_info['domain'] != current_info['domain']:
-                                        all_domains_df.at[current_idx, 'CrossDomainDuplicates'] = duplicate_msg
-                                        all_domains_df.at[original_idx, 'CrossDomainDuplicates'] = "Has duplicates in other domains"
-                                    else:
-                                        all_domains_df.at[current_idx, 'possibleDuplicates'] = duplicate_msg
-                                        all_domains_df.at[original_idx, 'possibleDuplicates'] = "Has duplicates in this domain"
+                                    current_idx = text_to_row_map[i]['df_index']
+                                    all_domains_df.at[current_idx, 'possibleDuplicates'] = (
+                                        f"Duplicate of Row {duplicate_info['original_row']} "
+                                        f"in domain '{duplicate_info['domain']}'"
+                                    )
                                     break
                         
                         domains_progress.progress(100)
@@ -546,61 +409,7 @@ if st.session_state.processed_df is not None:
         st.markdown(f"### Analysis for Solutions Domain: {st.session_state.selected_domain}")
     st.markdown("---")
     
-    # Add customer search functionality
-    st.markdown("### Search by Customer")
-    customer_search = st.text_input("Enter customer name to filter (case insensitive):")
-    
-    # Find the account name column
-    account_cols = [col for col in st.session_state.processed_df.columns if 'Account Name' in col]
-    if not account_cols:
-        st.error("No column containing 'Account Name' found in the data")
-    else:
-        account_col = account_cols[0]  # Use the first column that contains 'Account Name'
-        
-        # Filter DataFrame based on customer search
-        if customer_search:
-            filtered_df = st.session_state.processed_df[
-                st.session_state.processed_df[account_col].str.contains(customer_search, case=False, na=False)
-            ]
-            if len(filtered_df) > 0:
-                st.success(f"Found {len(filtered_df)} entries matching '{customer_search}'")
-                # Display filtered DataFrame with custom styling
-                styled_filtered = filtered_df.style.format(na_rep='')
-                styled_filtered = styled_filtered.applymap(lambda x: 'background-color: #ffeb99' if pd.isna(x) else '')
-                st.dataframe(styled_filtered, use_container_width=True)
-                
-                # Add download buttons for filtered results
-                col1, col2 = st.columns(2)
-                with col1:
-                    # Excel download for filtered results
-                    output = io.BytesIO()
-                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                        filtered_df.to_excel(writer, index=False)
-                    excel_data = output.getvalue()
-                    
-                    st.download_button(
-                        label="📥 Download Filtered Results as Excel",
-                        data=excel_data,
-                        file_name=f"filtered_{customer_search}_{st.session_state.selected_domain.lower().replace(' ', '_')}.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        key="filtered_excel"
-                    )
-                
-                with col2:
-                    # CSV download for filtered results
-                    csv = filtered_df.to_csv(index=False)
-                    st.download_button(
-                        label="📥 Download Filtered Results as CSV",
-                        data=csv,
-                        file_name=f"filtered_{customer_search}_{st.session_state.selected_domain.lower().replace(' ', '_')}.csv",
-                        mime="text/csv",
-                        key="filtered_csv"
-                    )
-            else:
-                st.warning(f"No entries found matching '{customer_search}'")
-    
-    st.markdown("### Complete Analysis Results")
-    # Display the complete processed DataFrame with custom styling
+    # Display the processed DataFrame with custom styling
     styled_df = st.session_state.processed_df.style.format(na_rep='')
     styled_df = styled_df.applymap(lambda x: 'background-color: #ffeb99' if pd.isna(x) else '')
     st.dataframe(styled_df, use_container_width=True)
@@ -632,116 +441,6 @@ if st.session_state.processed_df is not None:
             file_name=f"processed_{st.session_state.selected_domain.lower().replace(' ', '_')}.csv",
             mime="text/csv"
         )
-    
-    # Create and display duplicates DataFrame
-    duplicates_mask = (
-        (st.session_state.processed_df['possibleDuplicates'].str.len() > 0) |
-        (st.session_state.processed_df['CrossDomainDuplicates'].str.len() > 0)
-    )
-    
-    duplicates_df = st.session_state.processed_df[duplicates_mask].copy()
-    
-    if len(duplicates_df) > 0:
-        st.markdown("---")
-        st.markdown("### Duplicate Entries Analysis")
-        
-        # Add customer search for duplicates
-        st.markdown("### Search Duplicates by Customer")
-        dup_customer_search = st.text_input("Enter customer name to filter duplicates (case insensitive):", key="dup_search")
-        
-        # Filter duplicates DataFrame based on customer search
-        if dup_customer_search:
-            filtered_dups = duplicates_df[
-                duplicates_df[account_col].str.contains(dup_customer_search, case=False, na=False)
-            ]
-            if len(filtered_dups) > 0:
-                st.success(f"Found {len(filtered_dups)} duplicate entries matching '{dup_customer_search}'")
-                # Display filtered duplicates with custom styling
-                styled_filtered_dups = filtered_dups.style.format(na_rep='')
-                styled_filtered_dups = styled_filtered_dups.applymap(lambda x: 'background-color: #ffeb99' if pd.isna(x) else '')
-                st.dataframe(styled_filtered_dups, use_container_width=True)
-                
-                # Add download buttons for filtered duplicates
-                dup_col1, dup_col2 = st.columns(2)
-                with dup_col1:
-                    # Excel download for filtered duplicates
-                    dup_output = io.BytesIO()
-                    with pd.ExcelWriter(dup_output, engine='openpyxl') as writer:
-                        filtered_dups.to_excel(writer, index=False)
-                    dup_excel_data = dup_output.getvalue()
-                    
-                    st.download_button(
-                        label="📥 Download Filtered Duplicates as Excel",
-                        data=dup_excel_data,
-                        file_name=f"filtered_duplicates_{dup_customer_search}_{st.session_state.selected_domain.lower().replace(' ', '_')}.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        key="filtered_dup_excel"
-                    )
-                
-                with dup_col2:
-                    # CSV download for filtered duplicates
-                    dup_csv = filtered_dups.to_csv(index=False)
-                    st.download_button(
-                        label="📥 Download Filtered Duplicates as CSV",
-                        data=dup_csv,
-                        file_name=f"filtered_duplicates_{dup_customer_search}_{st.session_state.selected_domain.lower().replace(' ', '_')}.csv",
-                        mime="text/csv",
-                        key="filtered_dup_csv"
-                    )
-            else:
-                st.warning(f"No duplicate entries found matching '{dup_customer_search}'")
-        
-        # Display complete duplicates analysis
-        st.markdown("### Complete Duplicates Analysis")
-        # Count different types of duplicates
-        original_entries = duplicates_df[
-            (duplicates_df['possibleDuplicates'].str.contains('Has duplicates', na=False)) |
-            (duplicates_df['CrossDomainDuplicates'].str.contains('Has duplicates', na=False))
-        ]
-        duplicate_entries = duplicates_df[
-            (duplicates_df['possibleDuplicates'].str.contains('Duplicate of', na=False)) |
-            (duplicates_df['CrossDomainDuplicates'].str.contains('Duplicate of', na=False))
-        ]
-        
-        st.markdown(f"""
-        Found {len(duplicates_df)} entries in duplicate analysis:
-        - {len(original_entries)} original entries that have duplicates
-        - {len(duplicate_entries)} duplicate entries referencing other rows
-        """)
-        
-        # Display complete duplicates DataFrame with custom styling
-        styled_duplicates = duplicates_df.style.format(na_rep='')
-        styled_duplicates = styled_duplicates.applymap(lambda x: 'background-color: #ffeb99' if pd.isna(x) else '')
-        st.dataframe(styled_duplicates, use_container_width=True)
-        
-        # Add download buttons for complete duplicates analysis
-        dup_complete_col1, dup_complete_col2 = st.columns(2)
-        
-        # Excel download for complete duplicates
-        with dup_complete_col1:
-            dup_complete_output = io.BytesIO()
-            with pd.ExcelWriter(dup_complete_output, engine='openpyxl') as writer:
-                duplicates_df.to_excel(writer, index=False)
-            dup_complete_excel_data = dup_complete_output.getvalue()
-            
-            st.download_button(
-                label="📥 Download Complete Duplicates as Excel",
-                data=dup_complete_excel_data,
-                file_name=f"complete_duplicates_{st.session_state.selected_domain.lower().replace(' ', '_')}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key="complete_dup_excel"
-            )
-        
-        # CSV download for complete duplicates
-        with dup_complete_col2:
-            dup_complete_csv = duplicates_df.to_csv(index=False)
-            st.download_button(
-                label="📥 Download Complete Duplicates as CSV",
-                data=dup_complete_csv,
-                file_name=f"complete_duplicates_{st.session_state.selected_domain.lower().replace(' ', '_')}.csv",
-                mime="text/csv",
-                key="complete_dup_csv"
-            )
 
 # Footer with copyright
 st.markdown("---")
