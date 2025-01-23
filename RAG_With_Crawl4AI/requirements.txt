@@ -25,3 +25,4 @@ tiktoken>=0.6.0
 streamlit>=1.31.0
 markdown>=3.5.2
 watchdog>=4.0.0  # Required for streamlit auto-reload
+python-dotenv
