@@ -10,6 +10,10 @@
 - https://python.langchain.com/docs/versions/v0_3/modules/experimental/utilities/
 - https://python.langchain.com/docs/versions/v0_3/modules/experimental/utilities/python/
 
+# Langchain API Key:
+<get from: https://docs.smith.langchain.com/administration/how_to_guides/organization_management/create_account_api_key
+
+
 # DeepSeek API (very cheap)
 - https://platform.deepseek.com/
 
