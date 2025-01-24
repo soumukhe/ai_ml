@@ -19,3 +19,36 @@
 
 # Python REPL
 - The Python REPL stands for Read-Eval-Print Loop, a simple interactive programming environment. It’s a prompt where you can write and execute Python code line by line, and it immediately evaluates and displays the output.
+
+
+## Installation
+
+1. **Clone the Repository**
+
+   To clone only this specific project (sparse checkout):
+   ```bash
+   # Create and enter a new directory
+   mkdir my_demo && cd my_demo
+
+   # Initialize git
+   git init
+
+   # Add the remote repository
+   git remote add -f origin https://github.com/soumukhe/ai_ml.git
+
+   # Enable sparse checkout
+   git config core.sparseCheckout true
+
+   # Specify the subdirectory you want to clone
+   echo "LangChain/GL" >> .git/info/sparse-checkout
+
+   # Pull the subdirectory
+   git pull origin master
+
+   # Enter the project directory
+   cd LangChain/GL
+   ```
+
+2. **Set Up Virtual Environment**
+
+   Choose one of the following methods:
