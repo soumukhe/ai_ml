@@ -52,3 +52,30 @@
 2. **Set Up Virtual Environment**
 
    Choose one of the following methods:
+
+   **Using conda (recommended)**:
+   ```bash
+   # Create a new conda environment
+   conda create -n langChain python=3.12
+   
+   # Activate the environment
+   conda activate langChain
+   ```
+
+   **Using venv**:
+   ```bash
+   # Create a new virtual environment
+   python -m venv venv
+   
+   # Activate the environment
+   # On Windows:
+   venv\Scripts\activate
+   # On macOS/Linux:
+   source venv/bin/activate
+   ```
+
+3. **Install Dependencies**
+```bash
+# Install the required packages
+pip install -r requirements.txt
+
