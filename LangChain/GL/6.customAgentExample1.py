@@ -84,30 +84,42 @@ class PythonAgent:
     self.tool_prompt_template = """
     Create Python code to execute the following task:
     {user_task}
-    Output only the code. Do not include anything else in your output.
+    
+    Important:
+    1. Output only the code between ```python and ``` markers
+    2. Make sure to store the final result in a variable named 'result'
+    3. Include any necessary helper functions
     """
     self.script = None # Place holder for the Python script that will be generated during runtime
 
   def run(self, user_task):
-    # Format the message according to DeepSeek's API
-    response = self.llm.invoke(
-        self.tool_prompt_template.format(user_task=user_task)
-    )
+    # Format the message according to DeepSeek's API format
+    messages = [{"role": "user", "content": self.tool_prompt_template.format(user_task=user_task)}]
+    response = self.llm.invoke(messages)
     output = response.content.strip()
 
     # Parse Output
     start_index = output.find('```python')
     end_index = output.rfind('```')
 
-    python_script = output[start_index+9:end_index] 
+    if start_index == -1:
+        python_script = output  # If no code blocks found, use the entire output
+    else:
+        python_script = output[start_index+9:end_index].strip()
 
-    self.script = python_script # notice we are redefing self.script to the python_script
+    self.script = python_script
 
-    # Execute script
+    # Create a namespace for the code execution
+    namespace = {}
+
+    # Execute script in the namespace
     try:
-      result = self.tool.invoke(python_script)
+        # First execute the function definitions
+        exec(python_script, namespace)
+        # Then get the result
+        result = namespace.get('result', 'No result variable found')
     except Exception as e:
-      result = str(e)
+        result = str(e)
 
     return result
   
@@ -142,11 +154,9 @@ print(python_agent.script)
 
 print("-"*10 + "\n")
 
-
 """
 Output:
--------
-
+------
 Python REPL can execute arbitrary code. Use with caution.
 
  Below we are running the code from the original module with changed prompt
@@ -155,49 +165,18 @@ code_result: 113.0
 ----------
 
 result: 131.0
-
 ----------
 
+def celsius_to_fahrenheit(celsius):
+    return (celsius * 9/5) + 32
 
-celsius = 55
-fahrenheit = (celsius * 9/5) + 32
-print(fahrenheit)
-
+result = celsius_to_fahrenheit(55)
 ----------
 
-result: 5050
-
-----------
-
-"""
-
-"""
-Output:
--------
-
-Python REPL can execute arbitrary code. Use with caution.
-
- Below we are running the code from the original module with changed prompt
-code_result: 113.0
-
-----------
-
-result: 131.0
-
-----------
-
-
-celsius = 55
-fahrenheit = (celsius * 9/5) + 32
-print(fahrenheit)
-
-----------
-
-result: NameError("name 'is_prime' is not defined")
+result: 24133
 ----------
 
 The code that the llm generated for the sum of the first 100 prime numbers:
-
 def is_prime(n):
     if n <= 1:
         return False
@@ -219,8 +198,8 @@ def sum_of_first_n_primes(n):
         num += 1
     return sum(primes)
 
-print(sum_of_first_n_primes(100))
-
+result = sum_of_first_n_primes(100)
 ----------
+
 
 """
