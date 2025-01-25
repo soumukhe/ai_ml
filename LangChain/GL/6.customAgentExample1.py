@@ -118,7 +118,7 @@ python_agent = PythonAgent(llm, repl_tool)
 task = "Convert 55 degrees Celsius to Farenheit."
 
 
-# Now we can run the agent (using the run function defiend in our PythonAgent class)
+# Now we can run the agent
 result = python_agent.run(task)
 print(f"result: {result}")
 
@@ -130,9 +130,15 @@ print(python_agent.script)
 print("-"*10 + "\n")
 
 # Let us now focus the agent on a more difficult problem.
-task = "Find the sum of the first 100 natural numbers."
+task = "Find the sum of the first 100 prime numbers."
 result = python_agent.run(task)
 print(f"result: {result}")
+
+print("-"*10 + "\n")
+
+# show the code that the llm generated
+print("The code that the llm generated for the sum of the first 100 prime numbers:")
+print(python_agent.script)
 
 print("-"*10 + "\n")
 
@@ -160,6 +166,60 @@ print(fahrenheit)
 ----------
 
 result: 5050
+
+----------
+
+"""
+
+"""
+Output:
+-------
+
+Python REPL can execute arbitrary code. Use with caution.
+
+ Below we are running the code from the original module with changed prompt
+code_result: 113.0
+
+----------
+
+result: 131.0
+
+----------
+
+
+celsius = 55
+fahrenheit = (celsius * 9/5) + 32
+print(fahrenheit)
+
+----------
+
+result: NameError("name 'is_prime' is not defined")
+----------
+
+The code that the llm generated for the sum of the first 100 prime numbers:
+
+def is_prime(n):
+    if n <= 1:
+        return False
+    if n == 2:
+        return True
+    if n % 2 == 0:
+        return False
+    for i in range(3, int(n**0.5) + 1, 2):
+        if n % i == 0:
+            return False
+    return True
+
+def sum_of_first_n_primes(n):
+    primes = []
+    num = 2
+    while len(primes) < n:
+        if is_prime(num):
+            primes.append(num)
+        num += 1
+    return sum(primes)
+
+print(sum_of_first_n_primes(100))
 
 ----------
 
