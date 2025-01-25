@@ -118,7 +118,7 @@ python_agent = PythonAgent(llm, repl_tool)
 task = "Convert 55 degrees Celsius to Farenheit."
 
 
-# Now we can run the agent
+# Now we can run the agent (using the run function defiend in our PythonAgent class)
 result = python_agent.run(task)
 print(f"result: {result}")
 
