@@ -13,6 +13,13 @@ import os
 
 load_dotenv()
 
+
+## Summary of this code:
+# 1. Create a custom prompt for the LLM to generate Python code to execute a task.
+# 2. Extract the code from the LLM's response.
+# 3. Create a Repl tool to execute the code.
+# 4. Use the Repl tool to execute the code.
+
 LANGCHAIN_API_KEY = os.getenv("LANGCHAIN_API_KEY")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 
@@ -58,8 +65,16 @@ print("--"*10 + "\n")
 
 
 """
+we get as output:
+Response: 
+```python
+celsius = 39
+fahrenheit = (celsius * 9/5) + 32
+print(fahrenheit)
+```
+
 As the output above indicates, the LLM implements 
-he Celsius to Farenheit conversion formula to a simple Python script 
+the Celsius to Farenheit conversion formula to a simple Python script 
 enclosed within ```python and ```.
 
 In order to execute this code, 
