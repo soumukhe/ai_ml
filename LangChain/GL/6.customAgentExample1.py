@@ -14,6 +14,11 @@ In the original module:
 - we used llm to get code from the user task
 - we used repl_tool to execute the code
 
+*** Note: the more complex task will fail here because the 
+repl_tool does not have access to the namespace.
+
+in the next example we will fix this issue by using the exec tool instead of the repl_tool.
+
 """
 
 ## First we will import the previous customToolExample1.py module, and suppress the output of the module.
@@ -109,15 +114,9 @@ class PythonAgent:
 
     self.script = python_script
 
-    # Create a namespace for the code execution
-    namespace = {}
-
-    # Execute script in the namespace
+    # Execute script using the repl tool
     try:
-        # First execute the function definitions
-        exec(python_script, namespace)
-        # Then get the result
-        result = namespace.get('result', 'No result variable found')
+        result = self.tool.invoke(python_script)
     except Exception as e:
         result = str(e)
 
@@ -164,7 +163,7 @@ code_result: 113.0
 
 ----------
 
-result: 131.0
+result: 
 ----------
 
 def celsius_to_fahrenheit(celsius):
@@ -173,7 +172,7 @@ def celsius_to_fahrenheit(celsius):
 result = celsius_to_fahrenheit(55)
 ----------
 
-result: 24133
+result: NameError("name 'is_prime' is not defined")
 ----------
 
 The code that the llm generated for the sum of the first 100 prime numbers:
@@ -200,6 +199,5 @@ def sum_of_first_n_primes(n):
 
 result = sum_of_first_n_primes(100)
 ----------
-
 
 """
