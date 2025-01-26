@@ -16,6 +16,29 @@
 
 # Python REPL
 - The Python REPL stands for Read-Eval-Print Loop, a simple interactive programming environment. It’s a prompt where you can write and execute Python code line by line, and it immediately evaluates and displays the output.
+- **7.customAgentExampleW_exec.py shows use of exec() with namespace**
+
+# Comparison: Using Python REPL vs. `exec()` with a Namespace
+
+| **Feature**                   | **Python REPL**                                         | **`exec()` with Namespace**                                 |
+|--------------------------------|--------------------------------------------------------|------------------------------------------------------------|
+| **Purpose**                   | Interactive testing and exploration of Python code.     | Dynamically execute Python code within a controlled scope.  |
+| **Use Case**                  | Useful for debugging, quick experimentation, and testing. | Running dynamically generated or external Python code.     |
+| **Execution Environment**     | Executes code directly in the interpreter’s global environment. | Executes code within a specified `globals` or `locals` dictionary. |
+| **Namespace Control**         | Limited: Code modifies the global namespace directly.   | Full control over where variables and functions are stored (custom namespaces). |
+| **Persistence of Variables**  | Variables persist in the REPL session.                  | Variables exist only within the specified namespace.        |
+| **Output**                    | Displays results of expressions immediately.            | No output unless explicitly printed in the executed code.   |
+| **Security**                  | Risky if arbitrary code is executed manually.           | Can be risky, but scope-limiting namespaces reduce the risk of unintended side effects. |
+| **Error Handling**            | Immediate feedback on errors in the REPL.               | Requires wrapping `exec()` in a `try-except` block to handle errors. |
+| **Execution Context**         | Interactive, step-by-step execution with live feedback. | Executes a block of code at once without interactivity.     |
+| **Code Example**              | `>>> x = 5; print(x * 2)`                               | `exec('x = 5; print(x * 2)', {})`                          |
+| **Scoping Example**           | All variables are stored in the global namespace.       | `exec('x = 5', my_namespace); print(my_namespace['x'])`    |
+
+---
+
+### Summary
+- **Python REPL**: Best for interactive tasks, quick prototyping, and debugging.
+- **`exec()` with Namespace**: Useful for controlled execution of dynamic or external code, especially when isolating or limiting the scope of execution.
 
 # What Is a React Agent?
 
