@@ -149,6 +149,43 @@ DeepSeek-chat and DeepSeek-reasoner are two different models developed by DeepSe
 # DeepSeek API (very cheap)
 - https://platform.deepseek.com/
 
+# DeepSeek API vs GPT-4o and o1 Models
+
+DeepSeek offers two main models that compete with OpenAI’s GPT-4o and o1: **DeepSeek-V3** and **DeepSeek-R1**. Here’s a comparison of their features and pricing:
+
+---
+
+## Model Features
+
+| **Feature**               | **DeepSeek-V3** | **DeepSeek-R1** | **GPT-4o**       | **o1**          |
+|---------------------------|-----------------|-----------------|------------------|-----------------|
+| **Input Context Window**  | 128K tokens     | 128K tokens     | 128K tokens      | 128K tokens     |
+| **Maximum Output Tokens** | 8K tokens       | 32K tokens      | 16.4K tokens     | Unknown         |
+| **Open Source**           | Yes             | Yes             | No               | No              |
+| **Release Date**          | Dec 27, 2024    | Jan 21, 2025    | Aug 6, 2024      | Unknown         |
+
+DeepSeek-R1 and DeepSeek-V3 are both **open-source models**, which sets them apart from OpenAI’s offerings. **DeepSeek-R1** has a larger maximum output token capacity compared to GPT-4o.
+
+---
+
+## Pricing Comparison
+
+| **Model**     | **Input Cost (per million tokens)** | **Output Cost (per million tokens)** |
+|---------------|------------------------------------|-------------------------------------|
+| **DeepSeek-V3** | $0.14                             | $0.28                               |
+| **DeepSeek-R1** | $0.55                             | $2.19                               |
+| **GPT-4o**     | $2.50                             | $10.00                              |
+| **o1**         | $15.00                            | $60.00                              |
+
+---
+
+## Key Insights
+
+- **DeepSeek models** are significantly more affordable than OpenAI’s offerings:
+  - **DeepSeek-V3** is approximately **29.8x cheaper** than GPT-4o for input and output tokens combined.
+  - **DeepSeek-R1** is about **4.6x cheaper** than GPT-4o for input and output tokens.
+  - Compared to **o1**, DeepSeek-R1 is even more cost-effective, estimated to cost only **2%** of what users would spend on o1.
+
 ## **DeepSeek-chat**
 Also referred to as **DeepSeek-V3**, this is a general-purpose language model designed for a wide range of conversational tasks.
 
