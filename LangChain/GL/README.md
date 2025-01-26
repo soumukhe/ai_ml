@@ -77,7 +77,9 @@
 pip install -r requirements.txt
 ```
 
-# DeepSeek Models: DeepSeek-chat and DeepSeek-reasoner (DeepSeek-R1)
+# DeepSeek Models: 
+- DeepSeek-chat and
+- DeepSeek-reasoner (DeepSeek-R1)
 
 DeepSeek-chat and DeepSeek-reasoner are two different models developed by DeepSeek, each designed for specific tasks and use cases. Below are their features and key differences:
 
