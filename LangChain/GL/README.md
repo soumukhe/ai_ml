@@ -17,6 +17,44 @@
 # Python REPL
 - The Python REPL stands for Read-Eval-Print Loop, a simple interactive programming environment. It’s a prompt where you can write and execute Python code line by line, and it immediately evaluates and displays the output.
 
+# What Is a React Agent?
+
+A React agent is a type of agent in AI systems (like LangChain) that combines:
+1. **Reasoning**: The agent reasons about what needs to be done step-by-step.
+2. **Acting**: The agent interacts with tools, APIs, or external systems to complete tasks based on its reasoning.
+
+The term **“React”** often describes agents that:
+- Use **chain-of-thought prompting** to break tasks into manageable steps.
+- Decide dynamically when to call tools or stop reasoning.
+
+---
+
+## React Prompt and React Agent
+
+A **React prompt** is a specific type of input designed to enable reasoning and acting in AI models. It includes:
+- **Examples of reasoning steps**: How the model should reason about the problem.
+- **Examples of actions**: How the model should use tools or interact with the environment.
+
+When an agent uses a React prompt, it follows a structure where:
+1. It reasons about the input.
+2. Decides if a tool should be used or if it has the final answer.
+3. Iteratively repeats reasoning and acting until the task is complete.
+
+This creates a **React agent**, where the reasoning and acting process is central to the agent’s design.
+
+---
+
+## Characteristics of a React Agent:
+- **Iterative**: It reasons about the task and acts in steps.
+- **Tool-using**: It interacts with tools like APIs or databases.
+- **Chain-of-thought reasoning**: It explains its reasoning at each step.
+- **Dynamic**: Decides dynamically whether it needs to act further or stop.
+
+---
+
+## Summary:
+
+If an agent is created using a **React prompt**, it is indeed a React agent because the core behavior—**reasoning + acting**—is defined by the structure of the prompt. It’s a design pattern for building agents that can reason through problems and take appropriate actions iteratively.
 
 ## Installation
 
