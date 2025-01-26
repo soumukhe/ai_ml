@@ -75,7 +75,7 @@
 ```bash
 # Install the required packages
 pip install -r requirements.txt
-
+```
 
 # DeepSeek Models: DeepSeek-chat and DeepSeek-reasoner (DeepSeek-R1)
 
