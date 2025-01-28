@@ -312,6 +312,17 @@ if uploaded_file:
         # Load data and show domain selection
         df = pd.read_excel(file_path, sheet_name=sheet_name)
         
+        # Fill empty Account Name cells with values from above
+        account_cols = [col for col in df.columns if 'Account Name' in col]
+        if account_cols:
+            account_col = account_cols[0]  # Use the first column that contains 'Account Name'
+            df[account_col] = df[account_col].fillna(method='ffill')
+            
+            # Show info about filled values
+            filled_count = df[account_col].notna().sum() - df[account_col].count()
+            if filled_count > 0:
+                st.info(f"Filled {filled_count} empty Account Name cells with values from rows above")
+        
         # Convert Created Date to datetime with robust error handling
         try:
             # First try parsing with specific format M/D/YYYY
