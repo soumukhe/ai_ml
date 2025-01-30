@@ -210,6 +210,42 @@ uploaded_file = st.sidebar.file_uploader(
     accept_multiple_files=False
 )
 
+# Add Models Information section in sidebar
+st.sidebar.markdown("---")
+st.sidebar.header("🤖 Models Used")
+
+# Local Models
+st.sidebar.subheader("Local Models")
+with st.sidebar.expander("Sentiment Analysis", expanded=False):
+    st.markdown("""
+    - **Model**: facebook/bart-large-mnli
+    - **Type**: Zero-shot classifier
+    - **Usage**: Sentiment & importance rating
+    - ✅ Runs completely offline
+    """)
+    
+with st.sidebar.expander("Text Embeddings", expanded=False):
+    st.markdown("""
+    - **Model**: all-MiniLM-L6-v2
+    - **Type**: SentenceTransformer
+    - **Usage**: Duplicate detection
+    - ✅ Fully offline processing
+    - 384-dimensional embeddings
+    """)
+
+# Cloud Component
+st.sidebar.subheader("Secure Search")
+with st.sidebar.expander("Fuzzy Search", expanded=False):
+    st.markdown("""
+    - **Framework**: Langchain
+    - **Auth**: BridgeIT (Cisco Internal)
+    - ✅ Secure enterprise authentication
+    - ✅ Internal infrastructure only
+    - ✅ No public cloud usage
+    """)
+
+st.sidebar.markdown("---")
+
 def clean_data_directory():
     """Remove existing Excel files from data directory"""
     if not os.path.exists('data'):
@@ -476,7 +512,7 @@ def run_fuzzy_search_query(query, df, llm):
                 max_execution_time=30.0,
                 allow_dangerous_code=True,
                 include_df_in_prompt=True,
-                prefix="""You are working with a pandas dataframe that has these columns: Solution_Domain, Account Name, Created Date, Product, Use Case, Created By, Status, Closed Date, Solution Domain, Next Step, Original_Row_Number, Reason_W_AddDetails, RequestFeatureImportance, Sentiment, possibleDuplicates, CrossDomainDuplicates.
+                prefix="""You are working with a pandas dataframe that has these columns: Solution Domain, Account Name, Created Date, Product, Use Case, Created By, Status, Closed Date, Solution Domain, Next Step, Original_Row_Number, Reason_W_AddDetails, RequestFeatureImportance, Sentiment, possibleDuplicates, CrossDomainDuplicates.
 
 IMPORTANT: DO NOT CREATE SAMPLE DATA. Use the actual DataFrame 'df' that is provided to you.
 
@@ -486,10 +522,17 @@ To find matching rows:
 3. Return ONLY the list of matching row numbers
 4. Format: [1, 2, 3]
 5. No explanations or code blocks needed
+6. For multiple conditions, combine them with & operator and proper parentheses grouping
+7. For duplicate checks, use ((df['possibleDuplicates'].fillna('').str.len() > 0) | (df['CrossDomainDuplicates'].fillna('').str.len() > 0))
+8. For sentiment, use exact match: df['Sentiment'] == 'Negative'
+9. For date ranges, use pd.to_datetime(df['Created Date']).dt.strftime('%Y-%m') == '2024-03'
 
 Example commands:
-- For exact match: df[df['RequestFeatureImportance'] == 'highRating+']['row_number'].tolist()
-- For case-insensitive: df[df['RequestFeatureImportance'].str.lower() == 'highrating+']['row_number'].tolist()"""
+- For duplicates: df[((df['possibleDuplicates'].fillna('').str.len() > 0) | (df['CrossDomainDuplicates'].fillna('').str.len() > 0))]['row_number'].tolist()
+- For sentiment: df[df['Sentiment'] == 'Negative']['row_number'].tolist()
+- For domain search: df[df['Solution Domain'].str.lower().str.contains('campus', na=False)]['row_number'].tolist()
+- For date range: df[pd.to_datetime(df['Created Date']).dt.strftime('%Y-%m') == '2024-03']['row_number'].tolist()
+- For multiple conditions: df[((df['possibleDuplicates'].fillna('').str.len() > 0) | (df['CrossDomainDuplicates'].fillna('').str.len() > 0)) & (df['Sentiment'] == 'Negative') & (df['Solution Domain'].str.lower().str.contains('campus', na=False)) & (pd.to_datetime(df['Created Date']).dt.strftime('%Y-%m') == '2024-03')]['row_number'].tolist()"""
             )
             
             log_file.write(f"Finding matching row numbers...\n")
@@ -1029,6 +1072,7 @@ if st.session_state.processed_df is not None:
             - Show me all rows for possible duplicates for data center networking
             - Show me the rows where the account name matches 'BU - MAN DE'
             - Show me the rows where the account name has at&t and sentiment is negative
+            - Show me all rows that are duplicates and also solutions domain has campus and have negative sentiment and created in April 2024
             - Show me all rows that have highrating
             - Show me all rows that have highrating+
             - Show me all rows that have high rating
