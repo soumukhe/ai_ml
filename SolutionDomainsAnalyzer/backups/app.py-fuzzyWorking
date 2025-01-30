@@ -33,11 +33,10 @@ app_key = os.getenv('app_key')  # app key is required
 client_id = os.getenv('client_id')
 client_secret = os.getenv('client_secret')
 langsmith_api_key = os.getenv('LANGSMITH_API_KEY')
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
 # Validate required environment variables
-if not all([app_key, client_id, client_secret, langsmith_api_key, OPENAI_API_KEY]):
-    raise ValueError("Missing required environment variables. Please check your .env file contains: app_key, client_id, client_secret, LANGSMITH_API_KEY, and OPENAI_API_KEY")
+if not all([app_key, client_id, client_secret, langsmith_api_key]):
+    raise ValueError("Missing required environment variables. Please check your .env file contains: app_key, client_id, client_secret, and LANGSMITH_API_KEY")
 
 # Fuzzy search related functions
 def parse_markdown_table(markdown_text):
@@ -119,13 +118,31 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Initialize OpenAI client
+# Initialize Azure OpenAI client
 def init_azure_openai():
-    """Initialize OpenAI with API key"""
-    llm = ChatOpenAI(
-        model="gpt-4",
+    """Initialize Azure OpenAI with hardcoded credentials"""
+    url = "https://id.cisco.com/oauth2/default/v1/token"
+    payload = "grant_type=client_credentials"
+    value = base64.b64encode(f'{client_id}:{client_secret}'.encode('utf-8')).decode('utf-8')
+    headers = {
+        "Accept": "*/*",
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Authorization": f"Basic {value}",
+        "User": f'{{"appkey": "{app_key}"}}'
+    }
+    
+    token_response = requests.request("POST", url, headers=headers, data=payload)
+    
+    llm = AzureChatOpenAI(
+        azure_endpoint='https://chat-ai.cisco.com',
+        api_key=token_response.json()["access_token"],
+        api_version="2023-08-01-preview",
         temperature=0,
         max_tokens=1000,
+        model="gpt-4o",
+        model_kwargs={
+            "user": f'{{"appkey": "{app_key}"}}'
+        }
     )
     return llm
 
@@ -209,42 +226,6 @@ uploaded_file = st.sidebar.file_uploader(
     help="Drag and drop or click to upload",
     accept_multiple_files=False
 )
-
-# Add Models Information section in sidebar
-st.sidebar.markdown("---")
-st.sidebar.header("🤖 Models Used")
-
-# Local Models
-st.sidebar.subheader("Local Models")
-with st.sidebar.expander("Sentiment Analysis", expanded=False):
-    st.markdown("""
-    - **Model**: facebook/bart-large-mnli
-    - **Type**: Zero-shot classifier
-    - **Usage**: Sentiment & importance rating
-    - ✅ Runs completely offline
-    """)
-    
-with st.sidebar.expander("Text Embeddings", expanded=False):
-    st.markdown("""
-    - **Model**: all-MiniLM-L6-v2
-    - **Type**: SentenceTransformer
-    - **Usage**: Duplicate detection
-    - ✅ Fully offline processing
-    - 384-dimensional embeddings
-    """)
-
-# Cloud Component
-st.sidebar.subheader("Secure Search")
-with st.sidebar.expander("Fuzzy Search", expanded=False):
-    st.markdown("""
-    - **Framework**: Langchain
-    - **Auth**: BridgeIT (Cisco Internal)
-    - ✅ Secure enterprise authentication
-    - ✅ Internal infrastructure only
-    - ✅ No public cloud usage
-    """)
-
-st.sidebar.markdown("---")
 
 def clean_data_directory():
     """Remove existing Excel files from data directory"""
@@ -484,122 +465,153 @@ def run_fuzzy_search_query(query, df, llm):
             }
         )
         
-        # Set up logging to file
-        with open('terminal_output.txt', 'a') as log_file:
-            log_file.write(f"\n\n=== New Query: {query} ===\n")
-            log_file.write(f"Total rows in DataFrame: {len(df)}\n")
-            
-            # Step 1: Create a simplified agent to find matching row numbers
-            # Create simplified DataFrame with row numbers
-            simplified_df = df.copy()
-            simplified_df['row_number'] = df.index
-            
-            # Create pandas agent for finding matches
-            python_repl = PythonREPL()
-            tools = [
-                Tool(
-                    name="python_repl",
-                    description="A Python shell. Use this to execute python commands. Input should be a valid python command. If you want to see the output of a value, you should print it out with `print(...)`",
-                    func=python_repl.run
-                )
-            ]
-            
-            finder_agent = create_pandas_dataframe_agent(
-                llm=llm,
-                df=simplified_df,
-                verbose=True,
-                max_iterations=3,
-                max_execution_time=30.0,
-                allow_dangerous_code=True,
-                include_df_in_prompt=True,
-                prefix="""You are working with a pandas dataframe that has these columns: Solution_Domain, Account Name, Created Date, Product, Use Case, Created By, Status, Closed Date, Solution Domain, Next Step, Original_Row_Number, Reason_W_AddDetails, RequestFeatureImportance, Sentiment, possibleDuplicates, CrossDomainDuplicates.
+        # Create pandas agent with minimal configuration
+        agent = create_pandas_dataframe_agent(
+            llm=llm,
+            df=df,
+            verbose=True,
+            max_iterations=3,
+            allow_dangerous_code=True
+        )
+        
+        # Format the query to focus on code execution
+        formatted_query = f"""
+For this query: "{query}"
 
-IMPORTANT: DO NOT CREATE SAMPLE DATA. Use the actual DataFrame 'df' that is provided to you.
+1. Use the existing DataFrame 'df' - do not create sample data
+2. Generate appropriate pandas code to filter and display the data
+3. Use case-insensitive string operations (str.contains(), str.lower(), etc.)
+4. Execute the code using python_repl_ast
+5. Display results using df.to_markdown(index=False)
 
-To find matching rows:
-1. Use df.index or df['row_number'] to get the correct row numbers
-2. For text comparisons, use case-insensitive matching (str.contains() or str.lower())
-3. Return ONLY the list of matching row numbers
-4. Format: [1, 2, 3]
-5. No explanations or code blocks needed
-
-Example commands:
-- For exact match: df[df['RequestFeatureImportance'] == 'highRating+']['row_number'].tolist()
-- For case-insensitive: df[df['RequestFeatureImportance'].str.lower() == 'highrating+']['row_number'].tolist()"""
-            )
+Important:
+- Make all string comparisons case-insensitive
+- Return complete results without truncation
+- Show all matching rows
+- No explanatory text
+- No code blocks
+- Just execute and show the table
+- Do not create sample data - use the existing df
+"""
+        
+        # Get the response and extract the table output
+        response = agent.invoke({"input": formatted_query})
+        
+        # Extract and clean the output
+        output = response
+        if isinstance(output, dict) and 'output' in output:
+            output = output['output']
             
-            log_file.write(f"Finding matching row numbers...\n")
+        if isinstance(output, str):
+            # Find all table content
+            table_content = []
+            lines = output.split('\n')
+            in_table = False
+            header_found = False
             
-            # Get matching row numbers
-            response = finder_agent.invoke({
-                "input": f"Find row numbers where: {query}. IMPORTANT: Use the actual DataFrame 'df', do not create sample data."
-            })
+            for line in lines:
+                line = line.strip()
+                if line.startswith('|'):
+                    if not header_found:
+                        table_content.append(line)  # Add header
+                        if line.startswith('|:'):  # Separator line
+                            header_found = True
+                    else:
+                        table_content.append(line)  # Add data rows
+                    in_table = True
+                elif in_table and not line:  # Empty line after table
+                    in_table = False
             
-            # Extract and clean output
-            output = response['output']
-            if isinstance(output, str):
-                # Clean the output string
-                output = output.replace('Final Answer:', '').strip()
-                
-                # Try to extract numbers whether they're in a list or text format
-                try:
-                    # First try to evaluate as a Python list
-                    matching_rows = eval(output)
-                except:
-                    # If that fails, extract numbers from text
-                    import re
-                    matching_rows = [int(num) for num in re.findall(r'\d+', output)]
-                
-                if matching_rows:
-                    log_file.write(f"Found {len(matching_rows)} matching rows\n")
-                    
-                    # Step 2: Get complete data for matching rows
-                    result_df = df.iloc[matching_rows]
-                    log_file.write(f"Retrieved complete data for matching rows\n")
-                    return result_df.to_markdown(index=False)
+            # Combine all table lines
+            if table_content:
+                output = '\n'.join(table_content)
             
-            log_file.write("No matching rows found\n")
-            return "No matching results found."
-                
+        return output
+            
     except Exception as e:
-        error_msg = f"Error processing query: {str(e)}"
-        print(error_msg)
-        with open('terminal_output.txt', 'a') as log_file:
-            log_file.write(f"\n{error_msg}\n")
+        print(f"Error processing query: {str(e)}")
         return f"Error: {str(e)}"
 
 def run_fuzzy_search_query_with_retry(query, df, llm, max_retries=3):
     """Run fuzzy search query with retry mechanism"""
-    progress_bar = st.progress(0, "Processing query...")
+    # Initialize progress in session state if not exists
+    if 'search_progress' not in st.session_state:
+        st.session_state.search_progress = 0
+        st.session_state.search_status = "Query in progress. Please wait..."
     
-    last_result = None
-    total_matches = 0
+    # Create progress bar that uses session state
+    progress_bar = st.progress(st.session_state.search_progress, st.session_state.search_status)
     
     for attempt in range(max_retries):
         try:
-            # Update progress
-            progress_bar.progress((attempt + 1) / max_retries, f"Attempt {attempt + 1} of {max_retries}")
+            # Update progress in session state
+            st.session_state.search_progress = (attempt * 30) / 100
+            st.session_state.search_status = f"Attempt {attempt + 1} of {max_retries}..."
+            progress_bar.progress(st.session_state.search_progress, st.session_state.search_status)
             
             # Run the query
             result = run_fuzzy_search_query(query, df, llm)
             
-            # If we got any result, consider it valid
-            if result and result != "No matching results found.":
-                last_result = result
-                # Only retry if we got an error or no result
-                break
+            # Update progress for processing
+            st.session_state.search_progress = ((attempt * 30) + 15) / 100
+            st.session_state.search_status = "Processing results..."
+            progress_bar.progress(st.session_state.search_progress, st.session_state.search_status)
+            time.sleep(10)
+            
+            # Check if we got a valid result
+            if result:
+                # Check for "no records" patterns in the entire response
+                no_records_patterns = [
+                    "no records",
+                    "there are no",
+                    "0 records",
+                    "found 0",
+                    "no matching",
+                    "no results"
+                ]
+                
+                result_lower = result.lower()
+                if any(pattern in result_lower for pattern in no_records_patterns):
+                    progress_bar.empty()
+                    # Clear progress state
+                    st.session_state.search_progress = 0
+                    st.session_state.search_status = ""
+                    st.info("No matching records found for your search criteria. Try adjusting your search terms.")
+                    return None
+                
+                # Then check if we got a valid table
+                if '|' in result:
+                    st.session_state.search_progress = 100
+                    st.session_state.search_status = "Complete!"
+                    progress_bar.progress(st.session_state.search_progress, st.session_state.search_status)
+                    time.sleep(0.5)
+                    progress_bar.empty()
+                    # Clear progress state
+                    st.session_state.search_progress = 0
+                    st.session_state.search_status = ""
+                    return result
+                
+                # If we got a result but no table, treat as failed attempt
+                if attempt < max_retries - 1:
+                    st.session_state.search_status = f"Attempt {attempt + 1} failed, retrying in 10 seconds..."
+                    st.warning(st.session_state.search_status)
+                    st.session_state.search_progress = ((attempt + 1) * 30) / 100
+                    progress_bar.progress(st.session_state.search_progress, st.session_state.search_status)
+                    time.sleep(10)
                 
         except Exception as e:
-            print(f"Attempt {attempt + 1} failed: {str(e)}")
-            if attempt == max_retries - 1:  # Last attempt
-                progress_bar.empty()
-                raise e
-            time.sleep(2)  # Wait before retry
+            if attempt < max_retries - 1:
+                st.session_state.search_status = f"Attempt {attempt + 1} failed ({str(e)}), retrying in 10 seconds..."
+                st.warning(st.session_state.search_status)
+                st.session_state.search_progress = ((attempt + 1) * 30) / 100
+                progress_bar.progress(st.session_state.search_progress, st.session_state.search_status)
+                time.sleep(10)
     
-    # Clear progress
     progress_bar.empty()
-    
-    return last_result
+    # Clear progress state
+    st.session_state.search_progress = 0
+    st.session_state.search_status = ""
+    st.error("Query processing failed after multiple attempts. Please try again or rephrase your query.")
 
 if uploaded_file:
     # First just save the file and show sheet selection
@@ -623,7 +635,7 @@ if uploaded_file:
         account_cols = [col for col in df.columns if 'Account Name' in col]
         if account_cols:
             account_col = account_cols[0]
-            df[account_col] = df[account_col].ffill()
+            df[account_col] = df[account_col].fillna(method='ffill')
         
         # Convert Created Date to datetime with robust error handling
         try:
@@ -870,7 +882,7 @@ if st.session_state.processed_df is not None:
                     st.success(f"Found {len(filtered_df)} entries matching '{customer_search}'")
                     # Display filtered DataFrame with custom styling
                     styled_filtered = filtered_df.style.format(na_rep='')
-                    styled_filtered = styled_filtered.map(lambda x: 'background-color: #ffeb99' if pd.isna(x) else '')
+                    styled_filtered = styled_filtered.applymap(lambda x: 'background-color: #ffeb99' if pd.isna(x) else '')
                     st.dataframe(styled_filtered, use_container_width=True)
                     
                     # Add download buttons for filtered results
@@ -906,7 +918,7 @@ if st.session_state.processed_df is not None:
         st.markdown("### Complete Analysis Results")
         # Display the complete processed DataFrame with custom styling
         styled_df = st.session_state.processed_df.style.format(na_rep='')
-        styled_df = styled_df.map(lambda x: 'background-color: #ffeb99' if pd.isna(x) else '')
+        styled_df = styled_df.applymap(lambda x: 'background-color: #ffeb99' if pd.isna(x) else '')
         st.dataframe(styled_df, use_container_width=True)
         
         # Create columns for download buttons
@@ -965,7 +977,7 @@ if st.session_state.processed_df is not None:
                     st.success(f"Found {len(filtered_dups)} duplicate entries matching '{dup_customer_search}'")
                     # Display filtered duplicates with custom styling
                     styled_filtered_dups = filtered_dups.style.format(na_rep='')
-                    styled_filtered_dups = styled_filtered_dups.map(lambda x: 'background-color: #ffeb99' if pd.isna(x) else '')
+                    styled_filtered_dups = styled_filtered_dups.applymap(lambda x: 'background-color: #ffeb99' if pd.isna(x) else '')
                     st.dataframe(styled_filtered_dups, use_container_width=True)
                     
                     # Add download buttons for filtered duplicates
@@ -1022,7 +1034,7 @@ if st.session_state.processed_df is not None:
             
             # Display complete duplicates DataFrame with custom styling
             styled_duplicates = duplicates_df.style.format(na_rep='')
-            styled_duplicates = styled_duplicates.map(lambda x: 'background-color: #ffeb99' if pd.isna(x) else '')
+            styled_duplicates = styled_duplicates.applymap(lambda x: 'background-color: #ffeb99' if pd.isna(x) else '')
             st.dataframe(styled_duplicates, use_container_width=True)
             
             # Add download buttons for complete duplicates analysis

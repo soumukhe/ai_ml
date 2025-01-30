@@ -1,58 +1,67 @@
 # Solutions Domain Analyzer 🔍
 
-A powerful web application that analyzes solutions domain data using advanced Natural Language Processing (NLP) techniques. This tool helps identify duplicate entries (both within and across domains), assess request importance, and analyze sentiment in your solutions domain data.
+A powerful Streamlit application for analyzing and processing solutions domain data with advanced NLP capabilities. The application supports both OpenAI and BridgeIT authentication methods.
 
-## Features ✨
+## Models Used
 
-- **Interactive Web Interface**: 
-  - Clean, professional Streamlit interface
-  - Progress tracking with detailed status updates
-  - Highlighted visualization of results
-
-- **Advanced NLP Processing**:
-  - Text embedding generation using SentenceTransformer
-  - Semantic similarity detection (both within and across domains)
-  - Zero-shot classification for request importance and sentiment analysis
-
-- **Data Processing**:
-  - Automatic duplicate detection with cross-domain support
-  - Request importance classification (highRating+, highRating)
-  - Sentiment analysis (Neutral, Negative, Negative-)
-  - Flexible date range filtering
-  - Multi-domain processing
-
-- **User-Friendly Features**:
-  - Excel file upload (supports up to 1GB)
-  - Custom date range selection
-  - Multiple solution domain processing
-  - Separate duplicate entries analysis view
-  - Download results in Excel or CSV format
-
-## Models Used 🤖
-
-### Semantic Similarity Analysis
-- **Model**: all-MiniLM-L6-v2 (SentenceTransformer)
-- **Architecture**: BERT-based model optimized for semantic similarity
-- **Features**: 
+### Local Models (No External API Calls)
+- **Sentiment Analysis**: facebook/bart-large-mnli (Zero-shot classifier)
+  - Runs locally for sentiment and feature importance classification
+  - No data sent to external services
+  
+- **Text Embeddings**: all-MiniLM-L6-v2 (SentenceTransformer)
+  - Local embedding generation for duplicate detection
+  - Fully offline processing
   - 384-dimensional embeddings
-  - Cosine similarity comparison
-  - 0.95 threshold for duplicate detection
-  - Cross-domain duplicate detection support
 
-### Sentiment and Importance Classification
-- **Model**: facebook/bart-large-mnli
-- **Architecture**: BART-based zero-shot classification
-- **Features**:
-  - Multi-label classification
-  - Custom sentiment categories: highRating+, highRating, Neutral, Negative, Negative-
-  - Zero-shot learning capabilities
+### Cloud-Based Components
+- **Fuzzy Search**: Langchain with BridgeIT Authentication
+  - Secure enterprise authentication
+  - Internal Cisco infrastructure
+  - No data sent to public cloud services
 
-## Installation 🚀
+## Features
 
-1. Clone the repository:
+### Data Processing
+- Excel file upload support (up to 1GB)
+- Multiple sheet handling
+- Automatic date format handling
+- Support for ALL domains or individual domain analysis
+
+### Analysis Capabilities
+- Sentiment Analysis
+- Feature Request Importance Rating
+- Duplicate Detection (within and across domains)
+- Cross-Domain Analysis
+- Text Similarity Matching
+
+### Search Functionality
+- Advanced Fuzzy Search using LLM
+- Customer Name Search
+- Date Range Filtering
+- Intelligent Query Processing
+- Case-insensitive Matching
+
+### Export Options
+- Excel Export
+- CSV Export
+- Filtered Results Export
+- Duplicate Analysis Export
+
+## Setup Instructions
+
+### Prerequisites
 ```bash
-git clone [repository-url]
-cd [repository-name]
+python 3.12+
+pip
+virtualenv (recommended)
+```
+
+### Environment Setup
+1. Create and activate a virtual environment:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
 2. Install required packages:
@@ -60,93 +69,88 @@ cd [repository-name]
 pip install -r requirements.txt
 ```
 
-## Requirements 📝
+3. Create a `.env` file with the following variables:
+```env
+# For BridgeIT Authentication
+app_key=your_app_key
+client_id=your_client_id
+client_secret=your_client_secret
+langsmith_api_key=your_langsmith_api_key
 
-- Python 3.7+
-- Required packages:
-  - streamlit
-  - pandas
-  - numpy
-  - sentence-transformers
-  - transformers
-  - torch
-  - openpyxl
+# For OpenAI Authentication
+OPENAI_API_KEY=your_openai_api_key
+```
 
-## Usage 💡
-
-1. Start the application:
+### Running the Application
 ```bash
 streamlit run app.py
 ```
 
-2. Using the Interface:
-   - Upload your Excel file through the sidebar
-   - Select the desired sheet from your Excel file
-   - Choose a specific domain or "ALL Domains"
-   - Select time period (entire or custom range)
-   - Click "Process Domain" to start analysis
-   - View results and duplicate analysis
-   - Download results in Excel or CSV format
+## Usage Guide
 
-3. To stop the server:
-```bash
-pkill -f streamlit
-```
+### Data Upload
+1. Use the sidebar to upload your Excel file
+2. Select the appropriate sheet from the dropdown
+3. Choose between "ALL Domains" or a specific domain
+4. Select time period (Entire or Custom)
+5. Click "Process Domain"
 
-## Data Processing Details 📊
+### Search Capabilities
+The application supports various search queries:
+- Sentiment-based: "Show me ALL rows that have Negative sentiment"
+- Date-based: "Show me records between March 15th 2024 and March 16th 2024"
+- Account-based: "Show me rows where account name has at&t"
+- Rating-based: "Show me all rows that have highrating+"
+- Combined queries: "Show me rows where account name has at&t and sentiment is negative"
 
-The analyzer performs several steps:
-1. Validates and processes date formats (M/D/YYYY)
-2. Combines 'Reason' and 'Additional Details' fields
-3. Generates text embeddings for similarity analysis
-4. Detects possible duplicates (both within and across domains)
-5. Analyzes request importance and sentiment using the following categories:
-   - **Request Importance Categories**:
-     - `highRating+`: Highest priority requests
-     - `highRating`: High priority requests
-   - **Sentiment Categories**:
-     - `Neutral`: Neutral or balanced sentiment
-     - `Negative`: Negative sentiment
-     - `Negative-`: Strongly negative sentiment
-6. Presents results in an easy-to-read format with separate duplicate analysis
+### Data Analysis
+- Main Analysis tab shows complete processed data
+- Fuzzy Search tab enables advanced search capabilities
+- Duplicate analysis with cross-domain detection
+- Customer search functionality
+- Export capabilities for all views
 
-## Technical Features 🛠️
+## Technical Details
 
-- **Text Processing**:
-  - Advanced text cleaning and normalization
-  - Batch processing for efficient handling of large datasets
-  - Semantic similarity computation
-  - Cross-domain duplicate detection
-  
-- **Performance**:
-  - Efficient batch processing
-  - Progress tracking for long operations
-  - Memory-efficient handling of large files
-  - GPU acceleration when available
+### Authentication Methods
+The application supports two authentication methods:
+1. BridgeIT Authentication (using OAuth2)
+2. OpenAI Authentication (using API key)
 
-## Output Format 📋
+### Search Implementation
+- Two-step search process using LLM
+- Row number indexing for accurate results
+- Case-insensitive matching
+- Pandas DataFrame operations
+- Retry mechanism for reliability
 
-The processed data includes:
-- Original row numbers for reference
-- Solution domain classification
-- Created date (M/D/YYYY format)
-- Combined reason and additional details
-- Possible duplicates identification (within and across domains)
-- Request feature importance (highRating+, highRating)
-- Sentiment analysis (Neutral, Negative, Negative-)
+### Data Processing
+- Sentiment analysis using zero-shot classification
+- Text embedding using SentenceTransformer
+- Cosine similarity for duplicate detection
+- Robust error handling and logging
 
-## Notes 📌
+## Troubleshooting
 
-- Date format displayed as M/D/YYYY for consistency
-- Duplicate detection uses a 0.95 similarity threshold
-- Processing time varies based on data size and selected domains
-- The application uses CPU by default but will automatically use CUDA if available
-- Cross-domain duplicates are tracked separately from same-domain duplicates
+### Common Issues
+1. Authentication Errors:
+   - Verify environment variables are correctly set
+   - Check token expiration and refresh process
 
-## Support 🤝
+2. Search Issues:
+   - Ensure query format is clear and specific
+   - Check for case sensitivity in search terms
+   - Verify data is properly processed before searching
 
-For issues, questions, or contributions, please [create an issue](your-issue-tracker-url) or contact [your-contact-info].
+3. Performance Issues:
+   - Large files may require additional processing time
+   - Consider filtering data before processing
+   - Check system resources and memory usage
 
-## License 📄
+## Support
+
+For issues and feature requests, please contact the development team or create an issue in the repository.
+
+## License
 
 © 2024 Solutions Domain Analyzer. All rights reserved. 

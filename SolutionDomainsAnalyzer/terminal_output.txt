@@ -1,0 +1,287 @@
+
+
+=== New Query: Show me ALL rows that have Negative sentiment across ALL solution domains ===
+Total rows in DataFrame: 510
+Processing in 11 batches of 50 rows each
+
+Processing batch 1 of 11
+Batch rows 0 to 50
+Sending query to agent...
+Received response from agent
+Found 6 matches in this batch
+
+Processing batch 2 of 11
+Batch rows 50 to 100
+Sending query to agent...
+Received response from agent
+No matches found in this batch
+
+Processing batch 3 of 11
+Batch rows 100 to 150
+Sending query to agent...
+Received response from agent
+Found 8 matches in this batch
+
+Processing batch 4 of 11
+Batch rows 150 to 200
+Sending query to agent...
+Received response from agent
+Found 6 matches in this batch
+
+Processing batch 5 of 11
+Batch rows 200 to 250
+Sending query to agent...
+Received response from agent
+Found 5 matches in this batch
+
+Processing batch 6 of 11
+Batch rows 250 to 300
+Sending query to agent...
+Received response from agent
+Found 6 matches in this batch
+
+Processing batch 7 of 11
+Batch rows 300 to 350
+Sending query to agent...
+Received response from agent
+Found 7 matches in this batch
+
+Processing batch 8 of 11
+Batch rows 350 to 400
+Sending query to agent...
+Received response from agent
+Found 7 matches in this batch
+
+
+=== New Query: Show me ALL rows that have Negative sentiment across ALL solution domains ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+No matching rows found
+
+
+=== New Query: Show me ALL rows that have Negative sentiment across ALL solution domains ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+No matching rows found
+
+
+=== New Query: Show me ALL rows that have Negative sentiment across ALL solution domains ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+No matching rows found
+
+
+=== New Query: Show me ALL rows that have Negative sentiment across ALL solution domains ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+Found 90 matching rows
+Retrieved complete data for matching rows
+
+
+=== New Query: Show me ALL rows that have Negative sentiment across ALL solution domains ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+Found 90 matching rows
+Retrieved complete data for matching rows
+
+
+=== New Query: Show me the rows where the account name has at&t and sentiment is negative ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+
+Error processing query: An output parsing error occurred. In order to pass this error back to the agent and have it try again, pass `handle_parsing_errors=True` to the AgentExecutor. This is the error: Could not parse LLM output: `Thought: The question is asking for rows where the account name has at&t and sentiment is negative. However, the provided dataframe does not have a column for account name. Therefore, it is not possible to answer the question with the given dataframe.`
+For troubleshooting, visit: https://python.langchain.com/docs/troubleshooting/errors/OUTPUT_PARSING_FAILURE 
+
+
+=== New Query: Show me the rows where the account name has at&t and sentiment is negative ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+Found 1 matching rows
+Retrieved complete data for matching rows
+
+
+=== New Query: Show me the rows where the account name has at&t and sentiment is negative ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+Found 1 matching rows
+Retrieved complete data for matching rows
+
+
+=== New Query: Show me the rows where the account name has at&t and sentiment is negative ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+Found 1 matching rows
+Retrieved complete data for matching rows
+
+
+=== New Query: Show me the records between March 15th 2024 and March 16th 2024 ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+Found 3 matching rows
+Retrieved complete data for matching rows
+
+
+=== New Query: Show me all rows that have highrating+ ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+Found 215 matching rows
+Retrieved complete data for matching rows
+
+
+=== New Query: Show me all rows that have high rating ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+Found 330 matching rows
+Retrieved complete data for matching rows
+
+
+=== New Query: Show me all rows that have highrating ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+Found 183 matching rows
+Retrieved complete data for matching rows
+
+
+=== New Query: Show me all rows that have highrating ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+
+Error processing query: An output parsing error occurred. In order to pass this error back to the agent and have it try again, pass `handle_parsing_errors=True` to the AgentExecutor. This is the error: Could not parse LLM output: ````python
+# Extracting the row numbers where 'RequestFeatureImportance' contains 'highRating'
+row_numbers = df[df['RequestFeatureImportance'].str.contains('highRating', na=False)]['row_number'].tolist()
+row_numbers
+````
+For troubleshooting, visit: https://python.langchain.com/docs/troubleshooting/errors/OUTPUT_PARSING_FAILURE 
+
+
+=== New Query: Show me all rows that have highrating ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+
+Error processing query: An output parsing error occurred. In order to pass this error back to the agent and have it try again, pass `handle_parsing_errors=True` to the AgentExecutor. This is the error: Could not parse LLM output: `[0, 2, 3, 4]`
+For troubleshooting, visit: https://python.langchain.com/docs/troubleshooting/errors/OUTPUT_PARSING_FAILURE 
+
+
+=== New Query: Show me all rows that have highrating ===
+Total rows in DataFrame: 510
+
+
+=== New Query: Show me all rows that have highrating ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+
+Error processing query: An output parsing error occurred. In order to pass this error back to the agent and have it try again, pass `handle_parsing_errors=True` to the AgentExecutor. This is the error: Could not parse LLM output: ````python
+# Extracting the row numbers where 'RequestFeatureImportance' contains 'highRating'
+row_numbers = df[df['RequestFeatureImportance'].str.contains('highRating', na=False)]['row_number'].tolist()
+row_numbers
+````
+For troubleshooting, visit: https://python.langchain.com/docs/troubleshooting/errors/OUTPUT_PARSING_FAILURE 
+
+
+=== New Query: Show me all rows that have highrating ===
+Total rows in DataFrame: 510
+
+Error processing query: This agent relies on access to a python repl tool which can execute arbitrary code. This can be dangerous and requires a specially sandboxed environment to be safely used. Please read the security notice in the doc-string of this function. You must opt-in to use this functionality by setting allow_dangerous_code=True.For general security guidelines, please see: https://python.langchain.com/docs/security/
+
+
+=== New Query: Show me all rows that have highrating ===
+Total rows in DataFrame: 510
+
+Error processing query: If suffix is specified, include_df_in_prompt should not be.
+
+
+=== New Query: Show me all rows that have highrating ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+Found 3 matching rows
+Retrieved complete data for matching rows
+
+
+=== New Query: Show me the records between March 15th 2024 and March 16th 2024 ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+Found 3 matching rows
+Retrieved complete data for matching rows
+
+
+=== New Query: Show me the rows where the account name matches 'BU - MAN DE' ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+Found 2 matching rows
+Retrieved complete data for matching rows
+
+
+=== New Query: Show me all rows that have highrating+ ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+Found 3 matching rows
+Retrieved complete data for matching rows
+
+
+=== New Query: Show me all rows that have highrating+ ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+Found 2 matching rows
+Retrieved complete data for matching rows
+
+
+=== New Query: Show me all rows that have highrating+ ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+Found 215 matching rows
+Retrieved complete data for matching rows
+
+
+=== New Query: Show me ALL rows that have Negative sentiment across ALL solution domains ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+Found 90 matching rows
+Retrieved complete data for matching rows
+
+
+=== New Query: Show me the rows where the account name has at&t and sentiment is negative ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+Found 1 matching rows
+Retrieved complete data for matching rows
+
+
+=== New Query: Show me the rows where the account name has at&t
+ ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+Found 3 matching rows
+Retrieved complete data for matching rows
+
+
+=== New Query: Show me the rows where the account name has bank
+ ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+Found 24 matching rows
+Retrieved complete data for matching rows
+
+
+=== New Query: Show me the rows where the account name has bank and sentiment is negative
+ ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+Found 1 matching rows
+Retrieved complete data for matching rows
+
+
+=== New Query: Show me the rows where use case has endpoint
+ ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+Found 19 matching rows
+Retrieved complete data for matching rows
+
+
+=== New Query: Show me the rows where created by has Michael
+
+ ===
+Total rows in DataFrame: 510
+Finding matching row numbers...
+Found 6 matching rows
+Retrieved complete data for matching rows

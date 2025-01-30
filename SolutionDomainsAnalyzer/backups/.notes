@@ -1,0 +1,90 @@
+I also notied that if I change my mouse to a different Tab 
+while the initial processing in first tab,
+ it takes longer to process.  Is that my imagination ?
+
+No, that's not your imagination! This is a known behavior with Streamlit tabs. When you switch tabs while processing is happening, it can affect performance because:
+Streamlit reruns parts of the app when tab focus changes
+The UI updates and progress bars in one tab can be affected when another tab is active
+Let me modify the code to make it more resilient to tab
+
+
+def run_fuzzy_search_query_with_retry(query, df, llm, max_retries=3):
+    """Run fuzzy search query with retry mechanism"""
+    # Initialize progress in session state if not exists
+    if 'search_progress' not in st.session_state:
+        st.session_state.search_progress = 0
+        st.session_state.search_status = "Query in progress. Please wait..."
+    
+    # Create progress bar that uses session state
+    progress_bar = st.progress(st.session_state.search_progress, st.session_state.search_status)
+    
+    for attempt in range(max_retries):
+        try:
+            # Update progress in session state
+            st.session_state.search_progress = (attempt * 30) / 100
+            st.session_state.search_status = f"Attempt {attempt + 1} of {max_retries}..."
+            progress_bar.progress(st.session_state.search_progress, st.session_state.search_status)
+            
+            # Run the query
+            result = run_fuzzy_search_query(query, df, llm)
+            
+            # Update progress for processing
+            st.session_state.search_progress = ((attempt * 30) + 15) / 100
+            st.session_state.search_status = "Processing results..."
+            progress_bar.progress(st.session_state.search_progress, st.session_state.search_status)
+            time.sleep(10)
+            
+            # Check if we got a valid result
+            if result:
+                # Check for "no records" patterns in the entire response
+                no_records_patterns = [
+                    "no records",
+                    "there are no",
+                    "0 records",
+                    "found 0",
+                    "no matching",
+                    "no results"
+                ]
+                
+                result_lower = result.lower()
+                if any(pattern in result_lower for pattern in no_records_patterns):
+                    progress_bar.empty()
+                    # Clear progress state
+                    st.session_state.search_progress = 0
+                    st.session_state.search_status = ""
+                    st.info("No matching records found for your search criteria. Try adjusting your search terms.")
+                    return None
+                
+                # Then check if we got a valid table
+                if '|' in result:
+                    st.session_state.search_progress = 100
+                    st.session_state.search_status = "Complete!"
+                    progress_bar.progress(st.session_state.search_progress, st.session_state.search_status)
+                    time.sleep(0.5)
+                    progress_bar.empty()
+                    # Clear progress state
+                    st.session_state.search_progress = 0
+                    st.session_state.search_status = ""
+                    return result
+                
+                # If we got a result but no table, treat as failed attempt
+                if attempt < max_retries - 1:
+                    st.session_state.search_status = f"Attempt {attempt + 1} failed, retrying in 10 seconds..."
+                    st.warning(st.session_state.search_status)
+                    st.session_state.search_progress = ((attempt + 1) * 30) / 100
+                    progress_bar.progress(st.session_state.search_progress, st.session_state.search_status)
+                    time.sleep(10)
+                
+        except Exception as e:
+            if attempt < max_retries - 1:
+                st.session_state.search_status = f"Attempt {attempt + 1} failed ({str(e)}), retrying in 10 seconds..."
+                st.warning(st.session_state.search_status)
+                st.session_state.search_progress = ((attempt + 1) * 30) / 100
+                progress_bar.progress(st.session_state.search_progress, st.session_state.search_status)
+                time.sleep(10)
+    
+    progress_bar.empty()
+    # Clear progress state
+    st.session_state.search_progress = 0
+    st.session_state.search_status = ""
+    st.error("Query processing failed after multiple attempts. Please try again or rephrase your query.")

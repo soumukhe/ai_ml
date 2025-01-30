@@ -15,16 +15,62 @@ from IPython.display import display
 
 load_dotenv()
 
-import os
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+## BridgeIT
 
-# Initialize the LLM (GPT-4o)
-llm = ChatOpenAI(
-    model="gpt-4",
+import os
+import openai
+import traceback
+import requests
+import base64
+from langchain_openai import AzureChatOpenAI
+
+import os
+# Set the OpenAI API key from the environment variable
+# app_key = os.getenv('app_key')
+# client_id = os.getenv('client_id')
+# client_secret = os.getenv('client_secret')
+# # print(app_key)   # only for testing
+
+# Get environment variables without defaults
+app_key = os.getenv('app_key')  # app key is required
+client_id = os.getenv('client_id')
+client_secret = os.getenv('client_secret')
+langsmith_api_key = os.getenv('LANGSMITH_API_KEY')
+
+## OAuth2 Authentication
+
+client_id = client_id
+client_secret = client_secret
+
+url = "https://id.cisco.com/oauth2/default/v1/token"
+
+payload = "grant_type=client_credentials"  # This specifies the type of OAuth2 grant being used, which in this case is client_credentials.
+
+# The client ID and secret are combined, then Base64-encoded to be included in the Authorization header.
+value = base64.b64encode(f'{client_id}:{client_secret}'.encode('utf-8')).decode('utf-8')
+headers = {
+    "Accept": "*/*",
+    "Content-Type": "application/x-www-form-urlencoded",
+    "Authorization": f"Basic {value}",
+    "User": f'{{"appkey": "{app_key}"}}'  # Ensure the app_key is included as it worked in chat completions
+}
+
+token_response = requests.request("POST", url, headers=headers, data=payload)
+
+
+print(token_response.json())
+
+# Initialize the Azure OpenAI LLM with required parameters
+llm = AzureChatOpenAI(
+    azure_endpoint='https://chat-ai.cisco.com',
+    api_key=token_response.json()["access_token"],
+    api_version="2023-08-01-preview",
     temperature=0,
     max_tokens=1000,
+    model="gpt-4o",
+    user=f'{{"appkey": "{app_key}"}}' 
+    
 )
-
 # first look for the name of the file in the data folder
 file_path = os.listdir('data')
 print(file_path)
@@ -36,10 +82,6 @@ print("Available sheets:", excel_file.sheet_names)
 # Now load the data into a DataFrame
 # If you want to load a specific sheet, specify the sheet name
 df = pd.read_excel('data/' + file_path[0], sheet_name=excel_file.sheet_names[0])  # loads first sheet by default
-
-# # Let's print the DataFrame info instead
-# print("\nDataFrame Info:")
-# print(df.info())
 
 # Create Python REPL tool with name of python_repl_ast
 # has to do this to make it work with the agent for openai
@@ -61,7 +103,8 @@ agent = create_pandas_dataframe_agent(
     max_iterations=20,
     max_execution_time=300.0,
     allow_dangerous_code=True,
-    return_intermediate_steps=True
+    return_intermediate_steps=True,
+    user=f'{{"appkey": "{app_key}"}}' 
 )
 
 # 4. do not show rows where the priincipal query field is empty.  As an example, if the query is "show me possible duplicates for data center networking", do not include rows with duplicates are empty
@@ -164,7 +207,7 @@ def run_agent_query(query):
 # print("```")
 
 # Example usage
-response = run_agent_query("show me ALL rows that have highRating+ across ALL solution domains.  Also indicate how many matches there are.")
+response = run_agent_query("show me ALL rows that have Negative sentiment across ALL solution domains")
 print("\nLatest Response:")
 print("```markdown")
 print(response)

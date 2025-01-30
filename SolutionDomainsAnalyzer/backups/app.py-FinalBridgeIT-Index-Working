@@ -210,42 +210,6 @@ uploaded_file = st.sidebar.file_uploader(
     accept_multiple_files=False
 )
 
-# Add Models Information section in sidebar
-st.sidebar.markdown("---")
-st.sidebar.header("🤖 Models Used")
-
-# Local Models
-st.sidebar.subheader("Local Models")
-with st.sidebar.expander("Sentiment Analysis", expanded=False):
-    st.markdown("""
-    - **Model**: facebook/bart-large-mnli
-    - **Type**: Zero-shot classifier
-    - **Usage**: Sentiment & importance rating
-    - ✅ Runs completely offline
-    """)
-    
-with st.sidebar.expander("Text Embeddings", expanded=False):
-    st.markdown("""
-    - **Model**: all-MiniLM-L6-v2
-    - **Type**: SentenceTransformer
-    - **Usage**: Duplicate detection
-    - ✅ Fully offline processing
-    - 384-dimensional embeddings
-    """)
-
-# Cloud Component
-st.sidebar.subheader("Secure Search")
-with st.sidebar.expander("Fuzzy Search", expanded=False):
-    st.markdown("""
-    - **Framework**: Langchain
-    - **Auth**: BridgeIT (Cisco Internal)
-    - ✅ Secure enterprise authentication
-    - ✅ Internal infrastructure only
-    - ✅ No public cloud usage
-    """)
-
-st.sidebar.markdown("---")
-
 def clean_data_directory():
     """Remove existing Excel files from data directory"""
     if not os.path.exists('data'):
