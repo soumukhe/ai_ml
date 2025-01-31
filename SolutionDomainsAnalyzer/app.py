@@ -453,56 +453,14 @@ def process_domain_data(df, domain, embedding_model, classifier, skip_duplicates
         raise e
 
 def run_fuzzy_search_query(query, df, llm):
-    """Execute a fuzzy search query on the DataFrame"""
     try:
-        # Get fresh token for each query
-        url = "https://id.cisco.com/oauth2/default/v1/token"
-        payload = "grant_type=client_credentials"
-        value = base64.b64encode(f'{client_id}:{client_secret}'.encode('utf-8')).decode('utf-8')
-        headers = {
-            "Accept": "*/*",
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Authorization": f"Basic {value}",
-            "User": f'{{"appkey": "{app_key}"}}'
-        }
-        
-        token_response = requests.request("POST", url, headers=headers, data=payload)
-        
-        if token_response.status_code != 200:
-            raise Exception("Failed to refresh token")
-            
-        # Create new LLM instance with fresh token
-        llm = AzureChatOpenAI(
-            azure_endpoint='https://chat-ai.cisco.com',
-            api_key=token_response.json()["access_token"],
-            api_version="2023-08-01-preview",
-            temperature=0,
-            max_tokens=1000,
-            model="gpt-4o",
-            model_kwargs={
-                "user": f'{{"appkey": "{app_key}"}}'
-            }
-        )
-        
-        # Set up logging to file
         with open('terminal_output.txt', 'a') as log_file:
-            log_file.write(f"\n\n=== New Query: {query} ===\n")
-            log_file.write(f"Total rows in DataFrame: {len(df)}\n")
+            log_file.write(f"\nProcessing query: {query}\n")
             
-            # Step 1: Create a simplified agent to find matching row numbers
-            # Create simplified DataFrame with row numbers
+            # Create simplified dataframe for the agent
             simplified_df = df.copy()
-            simplified_df['row_number'] = df.index
-            
-            # Create pandas agent for finding matches
-            python_repl = PythonREPL()
-            tools = [
-                Tool(
-                    name="python_repl",
-                    description="A Python shell. Use this to execute python commands. Input should be a valid python command. If you want to see the output of a value, you should print it out with `print(...)`",
-                    func=python_repl.run
-                )
-            ]
+            simplified_df['row_number'] = range(len(df))
+            simplified_df['Created Date'] = pd.to_datetime(simplified_df['Created Date'])
             
             finder_agent = create_pandas_dataframe_agent(
                 llm=llm,
@@ -514,59 +472,56 @@ def run_fuzzy_search_query(query, df, llm):
                 include_df_in_prompt=True,
                 prefix="""You are working with a pandas dataframe that has these columns: Solution Domain, Account Name, Created Date, Product, Use Case, Created By, Status, Closed Date, Solution Domain, Next Step, Original_Row_Number, Reason_W_AddDetails, RequestFeatureImportance, Sentiment, possibleDuplicates, CrossDomainDuplicates.
 
-IMPORTANT: DO NOT CREATE SAMPLE DATA. Use the actual DataFrame 'df' that is provided to you.
-
-To find matching rows:
-1. Use df.index or df['row_number'] to get the correct row numbers
-2. For text comparisons, use case-insensitive matching (str.contains() or str.lower())
-3. Return ONLY the list of matching row numbers
-4. Format: [1, 2, 3]
-5. No explanations or code blocks needed
-6. For multiple conditions, combine them with & operator and proper parentheses grouping
-7. For duplicate checks, use ((df['possibleDuplicates'].fillna('').str.len() > 0) | (df['CrossDomainDuplicates'].fillna('').str.len() > 0))
-8. For sentiment, use exact match: df['Sentiment'] == 'Negative'
-9. For date ranges, use pd.to_datetime(df['Created Date']).dt.strftime('%Y-%m') == '2024-03'
-
-Example commands:
+Example patterns to use:
 - For duplicates: df[((df['possibleDuplicates'].fillna('').str.len() > 0) | (df['CrossDomainDuplicates'].fillna('').str.len() > 0))]['row_number'].tolist()
 - For sentiment: df[df['Sentiment'] == 'Negative']['row_number'].tolist()
 - For domain search: df[df['Solution Domain'].str.lower().str.contains('campus', na=False)]['row_number'].tolist()
-- For date range: df[pd.to_datetime(df['Created Date']).dt.strftime('%Y-%m') == '2024-03']['row_number'].tolist()
-- For multiple conditions: df[((df['possibleDuplicates'].fillna('').str.len() > 0) | (df['CrossDomainDuplicates'].fillna('').str.len() > 0)) & (df['Sentiment'] == 'Negative') & (df['Solution Domain'].str.lower().str.contains('campus', na=False)) & (pd.to_datetime(df['Created Date']).dt.strftime('%Y-%m') == '2024-03')]['row_number'].tolist()"""
-            )
+- For date range: df[(df['Created Date'] >= '2024-03-15') & (df['Created Date'] <= '2024-03-16')]['row_number'].tolist()
+- For account name: df[df['Account Name: Account Name  ↑'].str.lower().str.contains('search_term', case=False, na=False)]['row_number'].tolist()
+
+IMPORTANT: 
+1. Return ONLY the list of row numbers
+2. Do not append the results to the command
+3. For text searches (account name, domain, etc), always use str.contains() with case=False
+4. Always handle NA values with na=False in str operations""")
             
             log_file.write(f"Finding matching row numbers...\n")
             
-            # Get matching row numbers
-            response = finder_agent.invoke({
-                "input": f"Find row numbers where: {query}. IMPORTANT: Use the actual DataFrame 'df', do not create sample data."
-            })
-            
-            # Extract and clean output
-            output = response['output']
-            if isinstance(output, str):
-                # Clean the output string
-                output = output.replace('Final Answer:', '').strip()
+            try:
+                # Get matching row numbers
+                response = finder_agent.invoke({
+                    "input": f"Find matching rows for this query: {query}. Return ONLY the list of row numbers. For text searches, use case-insensitive contains."
+                })
                 
-                # Try to extract numbers whether they're in a list or text format
-                try:
-                    # First try to evaluate as a Python list
-                    matching_rows = eval(output)
-                except:
-                    # If that fails, extract numbers from text
-                    import re
-                    matching_rows = [int(num) for num in re.findall(r'\d+', output)]
+                # Extract and clean output
+                output = response['output'] if isinstance(response, dict) else str(response)
+                log_file.write(f"Raw output: {output}\n")
                 
-                if matching_rows:
-                    log_file.write(f"Found {len(matching_rows)} matching rows\n")
-                    
-                    # Step 2: Get complete data for matching rows
-                    result_df = df.iloc[matching_rows]
-                    log_file.write(f"Retrieved complete data for matching rows\n")
+                # First try: Look for list pattern [n1, n2, n3]
+                import re
+                list_matches = re.findall(r'\[([0-9, ]+)\]', output)
+                if list_matches:
+                    # Take the first list found
+                    numbers_str = list_matches[0]
+                    row_numbers = [int(n.strip()) for n in numbers_str.split(',') if n.strip()]
+                else:
+                    # Second try: Look for any numbers not followed by ] or part of .tolist()
+                    numbers = re.findall(r'\b(\d+)(?![\d\]]*\.tolist)', output)
+                    row_numbers = [int(num) for num in numbers]
+                
+                log_file.write(f"Extracted row numbers: {row_numbers}\n")
+                
+                if row_numbers:
+                    # Get the matching rows and convert to markdown
+                    result_df = df.iloc[row_numbers]
+                    log_file.write(f"Found {len(row_numbers)} matching rows\n")
                     return result_df.to_markdown(index=False)
-            
-            log_file.write("No matching rows found\n")
-            return "No matching results found."
+                else:
+                    return "No matching results found."
+                    
+            except Exception as e:
+                log_file.write(f"Error in agent execution: {str(e)}\n")
+                return f"Error: {str(e)}"
                 
     except Exception as e:
         error_msg = f"Error processing query: {str(e)}"
@@ -578,35 +533,55 @@ Example commands:
 def run_fuzzy_search_query_with_retry(query, df, llm, max_retries=3):
     """Run fuzzy search query with retry mechanism"""
     progress_bar = st.progress(0, "Processing query...")
-    
-    last_result = None
-    total_matches = 0
+    status_text = st.empty()
     
     for attempt in range(max_retries):
         try:
             # Update progress
             progress_bar.progress((attempt + 1) / max_retries, f"Attempt {attempt + 1} of {max_retries}")
+            status_text.text(f"Processing attempt {attempt + 1}...")
             
-            # Run the query
+            # Run the query with a timeout
             result = run_fuzzy_search_query(query, df, llm)
             
-            # If we got any result, consider it valid
-            if result and result != "No matching results found.":
-                last_result = result
-                # Only retry if we got an error or no result
-                break
+            # If we got a valid result (not None and not an error message)
+            if result and isinstance(result, str):
+                if not result.startswith("Error:") and result != "No matching results found.":
+                    progress_bar.empty()
+                    status_text.empty()
+                    return result  # Return immediately on success
+                elif result.startswith("Error:"):
+                    # Only retry on errors if not the last attempt
+                    if attempt < max_retries - 1:
+                        status_text.text(f"Error occurred, retrying... ({attempt + 2} of {max_retries})")
+                        time.sleep(2)
+                        continue
+                    else:
+                        progress_bar.empty()
+                        status_text.empty()
+                        return result  # Return error on last attempt
+            
+            # If we get here with no valid result and it's not the last attempt, retry
+            if attempt < max_retries - 1:
+                status_text.text(f"No valid result, retrying... ({attempt + 2} of {max_retries})")
+                time.sleep(2)
                 
         except Exception as e:
             print(f"Attempt {attempt + 1} failed: {str(e)}")
-            if attempt == max_retries - 1:  # Last attempt
+            if attempt < max_retries - 1:
+                status_text.text(f"Error occurred, retrying... ({attempt + 2} of {max_retries})")
+                time.sleep(2)
+            else:
                 progress_bar.empty()
+                status_text.empty()
                 raise e
-            time.sleep(2)  # Wait before retry
     
-    # Clear progress
+    # Clear progress indicators
     progress_bar.empty()
+    status_text.empty()
     
-    return last_result
+    # If we get here, all retries failed
+    return "No valid results found after all retry attempts."
 
 if uploaded_file:
     # First just save the file and show sheet selection
