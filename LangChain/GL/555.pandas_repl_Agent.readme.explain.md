@@ -22,7 +22,69 @@ finder_agent = create_pandas_dataframe_agent(
     max_execution_time=30.0,
     allow_dangerous_code=True,
     include_df_in_prompt=True,
-    prefix="""You are working with a pandas dataframe..."""
+    prefix="""You are working with a pandas dataframethat has these columns: Solution Domain, Account Name, Created Date, Product, Use Case, Created By, Status, Closed Date, Solution Domain, Next Step, Original_Row_Number, Reason_W_AddDetails, RequestFeatureImportance, Sentiment, possibleDuplicates, CrossDomainDuplicates.
+
+IMPORTANT: DO NOT CREATE SAMPLE DATA. Use the actual DataFrame 'df' that is provided to you.
+
+To find matching rows:
+1. Use df.index or df['row_number'] to get the correct row numbers
+2. For text comparisons, use case-insensitive matching (str.contains() or str.lower())
+3. Return ONLY the list of matching row numbers
+4. Format: [1, 2, 3]
+5. No explanations or code blocks needed
+6. For multiple conditions, combine them with & operator and proper parentheses grouping
+7. For duplicate checks, use ((df['possibleDuplicates'].fillna('').str.len() > 0) | (df['CrossDomainDuplicates'].fillna('').str.len() > 0))
+8. For sentiment, use exact match: df['Sentiment'] == 'Negative'
+9. For date ranges, use pd.to_datetime(df['Created Date']).dt.strftime('%Y-%m') == '2024-03'
+
+Example commands:
+- For duplicates: df[((df['possibleDuplicates'].fillna('').str.len() > 0) | (df['CrossDomainDuplicates'].fillna('').str.len() > 0))]['row_number'].tolist()
+- For sentiment: df[df['Sentiment'] == 'Negative']['row_number'].tolist()
+- For domain search: df[df['Solution Domain'].str.lower().str.contains('campus', na=False)]['row_number'].tolist()
+- For date range: df[pd.to_datetime(df['Created Date']).dt.strftime('%Y-%m') == '2024-03']['row_number'].tolist()
+- For multiple conditions: df[((df['possibleDuplicates'].fillna('').str.len() > 0) | (df['CrossDomainDuplicates'].fillna('').str.len() > 0)) & (df['Sentiment'] == 'Negative') & (df['Solution Domain'].str.lower().str.contains('campus', na=False)) & (pd.to_datetime(df['Created Date']).dt.strftime('%Y-%m') == '2024-03')]['row_number'].tolist()"""
+            )
+            
+            log_file.write(f"Finding matching row numbers...\n")
+            
+            # Get matching row numbers
+            response = finder_agent.invoke({
+                "input": f"Find row numbers where: {query}. IMPORTANT: Use the actual DataFrame 'df', do not create sample data."
+            })
+            
+            # Extract and clean output
+            output = response['output']
+            if isinstance(output, str):
+                # Clean the output string
+                output = output.replace('Final Answer:', '').strip()
+                
+                # Try to extract numbers whether they're in a list or text format
+                try:
+                    # First try to evaluate as a Python list
+                    matching_rows = eval(output)
+                except:
+                    # If that fails, extract numbers from text
+                    import re
+                    matching_rows = [int(num) for num in re.findall(r'\d+', output)]
+                
+                if matching_rows:
+                    log_file.write(f"Found {len(matching_rows)} matching rows\n")
+                    
+                    # Step 2: Get complete data for matching rows
+                    result_df = df.iloc[matching_rows]
+                    log_file.write(f"Retrieved complete data for matching rows\n")
+                    return result_df.to_markdown(index=False)
+            
+            log_file.write("No matching rows found\n")
+            return "No matching results found."
+                
+    except Exception as e:
+        error_msg = f"Error processing query: {str(e)}"
+        print(error_msg)
+        with open('terminal_output.txt', 'a') as log_file:
+            log_file.write(f"\n{error_msg}\n")
+        return f"Error: {str(e)}"
+"""
 )
 ```
 
