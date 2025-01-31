@@ -5,8 +5,33 @@ This document explains the implementation details of the Solutions Domain Analyz
 
 ## Fuzzy Search Implementation
 
+### How the Pandas DataFrame Agent Works
+Before diving into the implementations, it's important to understand how the pandas DataFrame agent operates:
+
+1. **LLM's Role**:
+   - Receives the query and column information
+   - Interprets search intent (exact vs partial match)
+   - Generates appropriate Python/Pandas code
+   - Never directly processes the DataFrame
+
+2. **Search Patterns**:
+   - Exact matches: Use `==` when query contains "exactly"
+   - Partial matches: Use `str.contains()` with case-insensitive option
+   - Example: `df[df['column'] == 'value']` vs `df[df['column'].str.lower().str.contains('value', case=False)]`
+
+3. **REPL's Role**:
+   - Built into the pandas agent
+   - Executes the generated code locally
+   - Has full access to the DataFrame in the local Python environment
+   - Handles all actual data processing
+
+4. **Data Flow**:
+```
+User Query → LLM (analyzes intent & generates code) → REPL (executes code on DataFrame) → Results
+```
+
 ### Current Implementation (Efficient Approach)
-The current implementation uses a two-step process that separates the concerns between the LLM (query understanding) and Python/Pandas (data processing).
+The current implementation optimizes this process by focusing the LLM on generating simpler, more focused code:
 
 ```python
 # Step 1: Create simplified DataFrame with row numbers
@@ -22,80 +47,18 @@ finder_agent = create_pandas_dataframe_agent(
     max_execution_time=30.0,
     allow_dangerous_code=True,
     include_df_in_prompt=True,
-    prefix="""You are working with a pandas dataframethat has these columns: Solution Domain, Account Name, Created Date, Product, Use Case, Created By, Status, Closed Date, Solution Domain, Next Step, Original_Row_Number, Reason_W_AddDetails, RequestFeatureImportance, Sentiment, possibleDuplicates, CrossDomainDuplicates.
-
-IMPORTANT: DO NOT CREATE SAMPLE DATA. Use the actual DataFrame 'df' that is provided to you.
-
-To find matching rows:
-1. Use df.index or df['row_number'] to get the correct row numbers
-2. For text comparisons, use case-insensitive matching (str.contains() or str.lower())
-3. Return ONLY the list of matching row numbers
-4. Format: [1, 2, 3]
-5. No explanations or code blocks needed
-6. For multiple conditions, combine them with & operator and proper parentheses grouping
-7. For duplicate checks, use ((df['possibleDuplicates'].fillna('').str.len() > 0) | (df['CrossDomainDuplicates'].fillna('').str.len() > 0))
-8. For sentiment, use exact match: df['Sentiment'] == 'Negative'
-9. For date ranges, use pd.to_datetime(df['Created Date']).dt.strftime('%Y-%m') == '2024-03'
-
-Example commands:
-- For duplicates: df[((df['possibleDuplicates'].fillna('').str.len() > 0) | (df['CrossDomainDuplicates'].fillna('').str.len() > 0))]['row_number'].tolist()
-- For sentiment: df[df['Sentiment'] == 'Negative']['row_number'].tolist()
-- For domain search: df[df['Solution Domain'].str.lower().str.contains('campus', na=False)]['row_number'].tolist()
-- For date range: df[pd.to_datetime(df['Created Date']).dt.strftime('%Y-%m') == '2024-03']['row_number'].tolist()
-- For multiple conditions: df[((df['possibleDuplicates'].fillna('').str.len() > 0) | (df['CrossDomainDuplicates'].fillna('').str.len() > 0)) & (df['Sentiment'] == 'Negative') & (df['Solution Domain'].str.lower().str.contains('campus', na=False)) & (pd.to_datetime(df['Created Date']).dt.strftime('%Y-%m') == '2024-03')]['row_number'].tolist()"""
-            )
-            
-            log_file.write(f"Finding matching row numbers...\n")
-            
-            # Get matching row numbers
-            response = finder_agent.invoke({
-                "input": f"Find row numbers where: {query}. IMPORTANT: Use the actual DataFrame 'df', do not create sample data."
-            })
-            
-            # Extract and clean output
-            output = response['output']
-            if isinstance(output, str):
-                # Clean the output string
-                output = output.replace('Final Answer:', '').strip()
-                
-                # Try to extract numbers whether they're in a list or text format
-                try:
-                    # First try to evaluate as a Python list
-                    matching_rows = eval(output)
-                except:
-                    # If that fails, extract numbers from text
-                    import re
-                    matching_rows = [int(num) for num in re.findall(r'\d+', output)]
-                
-                if matching_rows:
-                    log_file.write(f"Found {len(matching_rows)} matching rows\n")
-                    
-                    # Step 2: Get complete data for matching rows
-                    result_df = df.iloc[matching_rows]
-                    log_file.write(f"Retrieved complete data for matching rows\n")
-                    return result_df.to_markdown(index=False)
-            
-            log_file.write("No matching rows found\n")
-            return "No matching results found."
-                
-    except Exception as e:
-        error_msg = f"Error processing query: {str(e)}"
-        print(error_msg)
-        with open('terminal_output.txt', 'a') as log_file:
-            log_file.write(f"\n{error_msg}\n")
-        return f"Error: {str(e)}"
-"""
+    prefix="""You are working with a pandas dataframe..."""
 )
 ```
 
 Key features:
-1. **Focus on Row Numbers**: The LLM only needs to return matching row numbers
-2. **Structured Examples**: Clear patterns for common operations
-3. **Local Data Processing**: Actual data handling happens in Python/Pandas
-4. **Efficient Token Usage**: Minimizes LLM involvement in data processing
+1. **Focused Code Generation**: LLM generates code to only return row numbers
+2. **Enhanced Context**: `include_df_in_prompt=True` gives LLM better understanding of data structure
+3. **Simplified Processing**: REPL executes simpler queries
+4. **External Formatting**: Data formatting handled outside the agent
 
 ### Previous Implementation (Less Efficient)
-The old implementation tried to handle both query understanding and data processing within the LLM:
+The old implementation, while using the same basic mechanism, was less efficient in its approach:
 
 ```python
 agent = create_pandas_dataframe_agent(
@@ -117,10 +80,33 @@ For this query: "{query}"
 ```
 
 Issues with this approach:
-1. **LLM Data Processing**: Made the LLM handle data formatting and display
-2. **Token Intensive**: More complex operations within the LLM
-3. **Less Structured**: Fewer examples and patterns to follow
-4. **Slower Performance**: Due to LLM handling data processing
+1. **Complex Code Generation**: LLM generated code for filtering, processing, AND formatting
+2. **Limited Context**: Without `include_df_in_prompt`, LLM had less understanding of data structure
+3. **Heavy REPL Processing**: REPL had to execute more complex operations including formatting
+4. **Inefficient Workflow**: Combined data filtering and presentation in one step
+
+### Key Differences Illustrated
+
+```python
+# Old Approach - LLM generates complex code
+generated_code = """
+result = df[
+    (df['column'].str.contains('value')) & 
+    (df['other_column'] == 'something')
+].to_markdown(index=False)
+"""
+# REPL executes complex filtering and formatting
+
+# New Approach - LLM generates focused code
+generated_code = """
+df[
+    (df['column'].str.contains('value')) & 
+    (df['other_column'] == 'something')
+]['row_number'].tolist()
+"""
+# REPL just returns row numbers
+# Formatting handled separately by Python
+```
 
 ## Understanding `include_df_in_prompt`
 
@@ -272,4 +258,33 @@ st.markdown("""
    - Progress tracking
    - User selections
 
-The Streamlit implementation provides a clean, professional interface while handling complex data processing and user interactions efficiently. 
+The Streamlit implementation provides a clean, professional interface while handling complex data processing and user interactions efficiently.
+
+### Handling Special Characters in Queries
+
+The LLM needs specific guidance for handling special characters in search strings. This is particularly important for characters that have special meaning in Python/Pandas like `&`, `|`, etc.
+
+```python
+# Example of how the prefix should handle special characters
+prefix = """
+...
+Example commands:
+- For exact match: df[df['RequestFeatureImportance'] == 'highRating+']['row_number'].tolist()
+- For case-insensitive text with special chars: df[df['Account Name'].str.lower().str.contains('at&t', regex=False, na=False)]['row_number'].tolist()
+- For domain search: df[df['Solution Domain'].str.lower().str.contains('campus', na=False)]['row_number'].tolist()
+"""
+```
+
+Key points:
+1. Use `regex=False` when searching for text with special characters
+2. Always handle `na=False` to avoid NaN errors
+3. Provide explicit examples for common special character cases
+
+Common issues to avoid:
+```python
+# Wrong - & interpreted as logical AND
+df['Account Name'].str.contains('at&t')  
+
+# Correct - & treated as literal character
+df['Account Name'].str.contains('at&t', regex=False)
+``` 

@@ -97,11 +97,14 @@ streamlit run app.py
 
 ### Search Capabilities
 The application supports various search queries:
-- Sentiment-based: "Show me ALL rows that have Negative sentiment"
+- Sentiment-based: "Show me ALL rows that have exactly Negative sentiment"
 - Date-based: "Show me records between March 15th 2024 and March 16th 2024"
-- Account-based: "Show me rows where account name has at&t"
-- Rating-based: "Show me all rows that have highrating+"
-- Combined queries: "Show me rows where account name has at&t and sentiment is negative"
+- Account-based: "Show me rows where account name contains at&t"
+- Rating-based: "Show me all rows that have exactly highRating"
+- Partial matches: "Show me rows where Solution Domain contains campus"
+- Combined queries: "Show me rows where account name contains at&t and sentiment is exactly Negative"
+
+Note: Use the word "exactly" in your query for exact matches, otherwise the search will use case-insensitive partial matching.
 
 ### Data Analysis
 - Main Analysis tab shows complete processed data

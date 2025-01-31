@@ -472,25 +472,38 @@ def run_fuzzy_search_query(query, df, llm):
                 include_df_in_prompt=True,
                 prefix="""You are working with a pandas dataframe that has these columns: Solution Domain, Account Name, Created Date, Product, Use Case, Created By, Status, Closed Date, Solution Domain, Next Step, Original_Row_Number, Reason_W_AddDetails, RequestFeatureImportance, Sentiment, possibleDuplicates, CrossDomainDuplicates.
 
-Example patterns to use:
-- For duplicates: df[((df['possibleDuplicates'].fillna('').str.len() > 0) | (df['CrossDomainDuplicates'].fillna('').str.len() > 0))]['row_number'].tolist()
-- For sentiment: df[df['Sentiment'] == 'Negative']['row_number'].tolist()
-- For domain search: df[df['Solution Domain'].str.lower().str.contains('campus', na=False)]['row_number'].tolist()
-- For date range: df[(df['Created Date'] >= '2024-03-15') & (df['Created Date'] <= '2024-03-16')]['row_number'].tolist()
-- For account name: df[df['Account Name: Account Name  ↑'].str.lower().str.contains('search_term', case=False, na=False)]['row_number'].tolist()
+Example queries and their patterns:
+- "Show me all rows that have duplicates":
+  df[((df['possibleDuplicates'].fillna('').str.len() > 0) | (df['CrossDomainDuplicates'].fillna('').str.len() > 0))]['row_number'].tolist()
+
+- "Show me all rows that have exactly Negative sentiment":
+  df[df['Sentiment'] == 'Negative']['row_number'].tolist()
+
+- "Show me all rows where Solution Domain contains campus":
+  df[df['Solution Domain'].str.lower().str.contains('campus', na=False)]['row_number'].tolist()
+
+- "Show me all rows between March 15th and March 16th 2024":
+  df[(df['Created Date'] >= '2024-03-15') & (df['Created Date'] <= '2024-03-16')]['row_number'].tolist()
+
+- "Show me all rows where Account Name contains cisco":
+  df[df['Account Name: Account Name  ↑'].str.lower().str.contains('cisco', case=False, na=False)]['row_number'].tolist()
+
+- "Show me all rows that have exactly highRating":
+  df[df['RequestFeatureImportance'] == 'highRating']['row_number'].tolist()
 
 IMPORTANT: 
 1. Return ONLY the list of row numbers
 2. Do not append the results to the command
-3. For text searches (account name, domain, etc), always use str.contains() with case=False
-4. Always handle NA values with na=False in str operations""")
+3. If the query contains the word 'exactly', use exact match (==)
+4. If the query does not contain 'exactly', use case-insensitive contains
+5. Always handle NA values with na=False in str operations""")
             
             log_file.write(f"Finding matching row numbers...\n")
             
             try:
                 # Get matching row numbers
                 response = finder_agent.invoke({
-                    "input": f"Find matching rows for this query: {query}. Return ONLY the list of row numbers. For text searches, use case-insensitive contains."
+                    "input": f"Find matching rows for this query: {query}. Return ONLY the list of row numbers. If the query contains the word 'exactly', use exact match (==), otherwise use case-insensitive contains."
                 })
                 
                 # Extract and clean output
