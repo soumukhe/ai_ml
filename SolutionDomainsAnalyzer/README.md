@@ -38,7 +38,7 @@ Choose one of the following methods:
 conda create -n langchain_agent python=3.12
 
 # Activate the environment
-conda activate clangchain_agent
+conda activate langchain_agent
 ```
 
 #### Using venv:
