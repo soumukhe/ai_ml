@@ -1,5 +1,71 @@
 # Solutions Domain Analyzer 🔍
 
+## Quick Start Guide
+
+### Clone the Repository
+
+```bash
+# Create and enter a new directory
+mkdir my_demo && cd my_demo
+
+# Initialize git
+git init
+
+# Add the remote repository
+git remote add -f origin https://github.com/soumukhe/ai_ml.git
+
+# Enable sparse checkout
+git config core.sparseCheckout true
+
+# Specify the subdirectory you want to clone
+echo "SolutionDomainsAnalyzer" >> .git/info/sparse-checkout
+
+# Pull the subdirectory
+git pull origin master
+
+# Enter the project directory
+cd SolutionDomainsAnalyzer
+```
+
+### Set Up Virtual Environment
+
+Choose one of the following methods:
+
+#### Using conda (recommended):
+
+```bash
+# Create a new conda environment
+conda create -n langchain_agent python=3.12
+
+# Activate the environment
+conda activate clangchain_agent
+```
+
+#### Using venv:
+
+```bash
+# Create a new virtual environment
+python -m venv venv
+
+# Activate the environment
+# On Windows:
+venv\Scripts\activate
+# On macOS/Linux:
+source venv/bin/activate
+```
+
+### Running the Application
+
+```bash
+# for BridgeIT llm
+streamlit run app_BIT.sh 
+
+# for OpenAI llm
+streamlit run app_OpenAI.sh 
+```
+
+## Overview
+
 A powerful Streamlit application for analyzing and processing solutions domain data with advanced NLP capabilities. The application supports both OpenAI and BridgeIT authentication methods.
 
 ## Models Used
