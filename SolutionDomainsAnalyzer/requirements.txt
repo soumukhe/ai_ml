@@ -1,0 +1,44 @@
+# Core data processing and analysis
+pandas>=2.0.0
+numpy
+scikit-learn
+
+# Deep learning and transformers
+torch
+transformers
+sentence-transformers
+tqdm
+
+# Web framework and UI
+streamlit>=1.30.0
+streamlit-aggrid>=0.3.4
+watchdog>=3.0.0
+plotly>=5.18.0
+
+# LangChain and related
+langchain>=0.3,<0.4
+langchain-community>=0.3,<0.4
+langchain-experimental>=0.3,<0.4
+langchain-openai>=0.0.5
+langchain-together
+together>=0.2.5
+
+# File handling and Excel
+openpyxl
+tabulate>=0.9.0
+
+# Utilities
+python-dotenv>=0.21.0
+certifi>=2024.2.2
+urllib3>=2.0.0
+requests>=2.31.0
+numexpr
+ipython>=8.15.0
+
+# Data visualization
+matplotlib>=3.7.2
+seaborn>=0.12.2
+
+# Search and data sources
+duckduckgo-search>=3.0.0
+yfinance>=0.2.36
