@@ -228,11 +228,11 @@ with st.sidebar.expander("Sentiment Analysis", expanded=False):
     
 with st.sidebar.expander("Text Embeddings", expanded=False):
     st.markdown("""
-    - **Model**: all-MiniLM-L6-v2
+    - **Model**: hkunlp/instructor-xl
     - **Type**: SentenceTransformer
     - **Usage**: Duplicate detection
     - ✅ Fully offline processing
-    - 384-dimensional embeddings
+    - 1024-dimensional embeddings
     """)
 
 # Cloud Component
@@ -296,7 +296,8 @@ def suppress_stdout_stderr():
 def load_models():
     """Load and cache the ML models"""
     # Simpler model loading without suppression
-    embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+    #embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+    embedding_model = SentenceTransformer("hkunlp/instructor-xl")
     embedding_model.to('cpu')  # Explicitly use CPU for consistency
     
     classifier = pipeline("zero-shot-classification",
