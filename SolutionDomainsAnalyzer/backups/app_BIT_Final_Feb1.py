@@ -153,6 +153,7 @@ st.set_page_config(
 )
 
 
+
 # Initialize session state for fuzzy search
 if 'fuzzy_search_df' not in st.session_state:
     st.session_state.fuzzy_search_df = None
@@ -250,11 +251,11 @@ with st.sidebar.expander("Sentiment Analysis", expanded=False):
     
 with st.sidebar.expander("Text Embeddings", expanded=False):
     st.markdown("""
-    - **Model**: all-MiniLM-L6-v2
+    - **Model**: hkunlp/instructor-xl
     - **Type**: SentenceTransformer
     - **Usage**: Duplicate detection
     - ✅ Fully offline processing
-    - 384-dimensional embeddings
+    - 1024-dimensional embeddings
     """)
 
 # Cloud Component
@@ -262,10 +263,10 @@ st.sidebar.subheader("Secure Search")
 with st.sidebar.expander("Fuzzy Search", expanded=False):
     st.markdown("""
     - **Framework**: Langchain
-    - **Auth**: BridgeIT (Cisco Internal)
+    - **Model**: BridgeIT (Cisco Internal)
     - ✅ Secure enterprise authentication
-    - ✅ Internal infrastructure only
-    - ✅ No public cloud usage
+    - ✅ Enterprise-grade security
+    - ✅ Advanced natural language processing
     """)
 
 st.sidebar.markdown("---")
@@ -318,7 +319,8 @@ def suppress_stdout_stderr():
 def load_models():
     """Load and cache the ML models"""
     # Simpler model loading without suppression
-    embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+    #embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+    embedding_model = SentenceTransformer("hkunlp/instructor-xl")
     embedding_model.to('cpu')  # Explicitly use CPU for consistency
     
     classifier = pipeline("zero-shot-classification",
@@ -477,7 +479,7 @@ def process_domain_data(df, domain, embedding_model, classifier, skip_duplicates
         raise e
 
 def run_fuzzy_search_query(query, df, llm):
-    """Execute a fuzzy search query on the DataFrame"""
+    llm=init_azure_openai() 
     try:
         with open('terminal_output.txt', 'a') as log_file:
             log_file.write(f"\nProcessing query: {query}\n")
@@ -488,7 +490,7 @@ def run_fuzzy_search_query(query, df, llm):
             simplified_df['Created Date'] = pd.to_datetime(simplified_df['Created Date'])
             
             finder_agent = create_pandas_dataframe_agent(
-                llm=llm,  # Use the passed-in LLM instance
+                llm=llm,
                 df=simplified_df,
                 verbose=True,
                 max_iterations=3,
@@ -560,7 +562,7 @@ IMPORTANT:
                 # If we get here, no valid results were found
                 log_file.write("No matching results found\n")
                 return "No matching results found."
-                
+                    
             except Exception as e:
                 log_file.write(f"Error in agent execution: {str(e)}\n")
                 return f"Error: {str(e)}"
@@ -1097,7 +1099,7 @@ if st.session_state.processed_df is not None:
             - Show me all rows that have highrating
             - Show me all rows that have highrating+
             - show me all the rows that have exactly highrating
-            - show me all the rows that have exactly highrating and also duplicates
+            - show me all the rows that have exactly highrating and also duplicates 
             """)
         
         # Initialize LLM if not already done
