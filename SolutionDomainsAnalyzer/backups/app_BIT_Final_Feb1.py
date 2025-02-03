@@ -320,7 +320,8 @@ def load_models():
     """Load and cache the ML models"""
     # Simpler model loading without suppression
     #embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-    embedding_model = SentenceTransformer("hkunlp/instructor-xl")
+    embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+    #embedding_model = SentenceTransformer("hkunlp/instructor-xl")  
     embedding_model.to('cpu')  # Explicitly use CPU for consistency
     
     classifier = pipeline("zero-shot-classification",
@@ -493,8 +494,8 @@ def run_fuzzy_search_query(query, df, llm):
                 llm=llm,
                 df=simplified_df,
                 verbose=True,
-                max_iterations=3,
-                max_execution_time=30.0,
+                max_iterations=5,
+                max_execution_time=90.0,
                 allow_dangerous_code=True,
                 include_df_in_prompt=True,
                 prefix="""You are working with a pandas dataframe that has these columns: Solution Domain, Account Name, Created Date, Product, Use Case, Created By, Status, Closed Date, Solution Domain, Next Step, Original_Row_Number, Reason_W_AddDetails, RequestFeatureImportance, Sentiment, possibleDuplicates, CrossDomainDuplicates.
@@ -574,7 +575,7 @@ IMPORTANT:
             log_file.write(f"\n{error_msg}\n")
         return f"Error: {str(e)}"
 
-def run_fuzzy_search_query_with_retry(query, df, llm, max_retries=3):
+def run_fuzzy_search_query_with_retry(query, df, llm, max_retries=7):
     """Run fuzzy search query with retry mechanism"""
     progress_bar = st.progress(0, "Processing query...")
     status_text = st.empty()
@@ -602,7 +603,7 @@ def run_fuzzy_search_query_with_retry(query, df, llm, max_retries=3):
                     # Only retry on errors if not the last attempt
                     if attempt < max_retries - 1:
                         status_text.text(f"Error occurred, retrying... ({attempt + 2} of {max_retries})")
-                        time.sleep(2)
+                        time.sleep(4)
                         continue
                     else:
                         progress_bar.empty()
@@ -612,13 +613,13 @@ def run_fuzzy_search_query_with_retry(query, df, llm, max_retries=3):
             # If we get here with no valid result and it's not the last attempt, retry
             if attempt < max_retries - 1:
                 status_text.text(f"No valid result, retrying... ({attempt + 2} of {max_retries})")
-                time.sleep(2)
+                time.sleep(4)
                 
         except Exception as e:
             print(f"Attempt {attempt + 1} failed: {str(e)}")
             if attempt < max_retries - 1:
                 status_text.text(f"Error occurred, retrying... ({attempt + 2} of {max_retries})")
-                time.sleep(2)
+                time.sleep(4)
             else:
                 progress_bar.empty()
                 status_text.empty()
