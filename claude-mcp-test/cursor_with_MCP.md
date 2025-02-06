@@ -24,7 +24,7 @@ ps -aef | grep mcp # to see the mcp servers running processes
 
 pkill -f mcp # will kill all of them.  I have also MCP setup for claude desktop, so not a good idea
 
-pkill -f "pythonsScripts/cursor/mcp/dist/tools/index.js      # will kill just the cursor ones.
+pkill -f "pythonsScripts/cursor/mcp/dist/tools/index.js"      # will kill just the cursor ones.
 ```
 
  
