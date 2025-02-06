@@ -137,11 +137,6 @@ The Claude Desktop configuration file is located at:
 ~/Library/Application Support/Claude/claude_desktop_config.json
 ```
 
-### Screenshot showing that MCP is available in Claude Desktop
-```markdown
-![Example Image](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAMAAADXqc3KAAAB+FBMVEUAAAA/mUPidDHiLi5Cn0XkNTPmeUrkdUg/m0Q0pEfcpSbwaVdKskg+lUP4zA/iLi3msSHkOjVAmETdJSjtYFE/lkPnRj3sWUs8kkLeqCVIq0fxvhXqUkbVmSjwa1n1yBLepyX1xxP0xRXqUkboST9KukpHpUbuvRrzrhF/...)
-```
-
 ### Troubleshooting
 ```bash
 tail -n 20 -f ~/Library/Logs/Claude/mcp*.log
