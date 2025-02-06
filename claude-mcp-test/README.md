@@ -138,7 +138,9 @@ The Claude Desktop configuration file is located at:
 ```
 
 ### Troubleshooting
+```bash
 tail -n 20 -f ~/Library/Logs/Claude/mcp*.log
+```
 
 ### Ensuring that MCP tools are used
 ❌  Get Tesla stock price today
