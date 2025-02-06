@@ -103,11 +103,46 @@ npm -v
 }
 ```
 
+### Brave Search and Git hub together:
+
+```json
+{
+    "mcpServers": {
+      "brave-search": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-brave-search"
+        ],
+        "env": {
+          "BRAVE_API_KEY": ""
+        }
+      },
+      "github": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-github"
+        ],
+        "env": {
+          "GITHUB_PERSONAL_ACCESS_TOKEN": ""
+        }
+      }
+    }
+```
+
 ### Configuration File Location
 The Claude Desktop configuration file is located at:
 ```bash
 ~/Library/Application Support/Claude/claude_desktop_config.json
 ```
+
+### Troubleshooting
+tail -n 20 -f ~/Library/Logs/Claude/mcp*.log
+
+### Ensuring that MCP tools are used
+❌  Get Tesla stock price today
+✔️  Use Brave search to find Tesla stock price today
 
 ### Important Notes
 - ⚠️ Keep your API keys and tokens secure
