@@ -1,5 +1,42 @@
 # TypeScript Project Setup Guide
 
+## Tools  `Thank you Kevin Leneway!`
+- https://github.com/kleneway/awesome-cursor-mpc-server
+- https://www.youtube.com/watch?v=MAicJ6KKccU&t=88s
+- https://docs.cursor.com/advanced/model-context-protocol
+
+Once you install the tools, you have to compile them. 
+- way too much stuff there that I can't remember how to do, especially because I'm not conversant with type script/java script (the project is actually built with TypeScript, which is a superset of JavaScript that adds static typing).  Howevever, I'll tell you how I got them installed.
+  - copied the files one by one, from Kevin's git repo (you can clone also)
+  - then I opened cursor composer (agent view) and asked cursor to help me compile them.  Cursor had to do a lot of things there (incuding npm install, puppeeteer install, fix some of the .ts files, create me an alias in my .bash_profile, so I can run these tools from any cursor project, etc, etc)
+  - also, having the alias setup in .bash_profile  is really nice.  I can just start the mcp server, ready to use from any cursor project.
+ 
+```csv
+# Cursor MCP Tools Server Alias in my .bash_profile
+alias start-mcp-server='cd /Users/soumukhe/pythonsScripts/cursor/mcp && source ~/.nvm/nvm.sh && nvm use v18.17.0 && (tsc --project tsconfig.json && node dist/tools/index.js > ~/mcp-server.log 2>&1 &)'
+```
+**Starting/Stopping MCP Server:**
+```bash
+ps -aef | grep mcp # to see the mcp servers running processes
+
+pkill -f mcp # will kill all of them.  I have also MCP setup for claude desktop, so not a good idea
+
+pkill -f "pythonsScripts/cursor/mcp/dist/tools/index.js      # will kill just the cursor ones.
+```
+
+ 
+- **END Result**  Workig really well and this can be very helpful.  More tools can be used following this principle...
+
+📙**Note:**  
+
+- The MCP server is just a bridge between Claude and these tools. Your Python development workflow remains unchanged - you just get additional capabilities through these tools.
+For example:
+- Take screenshots of your Python web apps
+- Get architecture advice for your Python projects
+- Review changes in your Python codebase
+  
+The fact that the MCP server is written in TypeScript is just an implementation detail - it doesn't affect how you use the tools with your Python projects at all!
+
 ## What is This Project?
 This is a Model Context Protocol (MCP) server implementation that extends Claude's capabilities in the Cursor IDE. MCP is Anthropic's protocol that allows Claude to interact with external tools and services. This server provides three tools:
 
@@ -190,15 +227,39 @@ Uses OpenAI's GPT models to analyze code and provide implementation steps.
 
 Example:
 ```
-Use the architect tool to plan how to add error handling to the screenshot function
+I have a Python script that processes large JSON files but it's running slowly. Can you help plan how to optimize it using async/await and multiprocessing?
+
+I need to add SQLAlchemy to my existing Python web app. The models should include User, Product, and Order tables with proper relationships. How should I structure this?
+
+I have a Python data processing pipeline that reads CSV files, transforms data, and saves to PostgreSQL. How should I implement a comprehensive testing strategy using pytest?
 ```
 
 ### 3. Code Review Tool
 Reviews code changes against the main branch.
 
 Example:
+In current project:
 ```
-Review the changes in the current directory
+git init && git add . && git commit -m "current project"
+```
+- make changes to python scripts
+- Type in composer/chat:
+```
+show me git diff for this project
+```
+
+Let's say that you agree to the changes and want to commit them.
+
+#### main branch commit
+```
+git add .
+git commit -m "some comment"
+```
+   
+#### or for branching:
+```git add .  
+git checkout -b feature/screenshot-docs
+git commit -m "Added documentation comments to screenshot tool"
 ```
 
 ## Configuration
