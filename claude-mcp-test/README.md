@@ -134,7 +134,7 @@ npm -v
 ### Configuration File Location
 The Claude Desktop configuration file is located at:
 ```bash
-~/Library/Application Support/Claude/claude_desktop_config.json
+~/Library/Application\ Support/Claude/claude_desktop_config.json
 ```
 
 ### Troubleshooting
