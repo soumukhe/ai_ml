@@ -18,6 +18,8 @@ alias start-mcp-server='cd /Users/soumukhe/pythonsScripts/cursor/mcp && source ~
 ```
 **Starting/Stopping MCP Server:**
 ```bash
+start-mcp-server # to start the server
+
 ps -aef | grep mcp # to see the mcp servers running processes
 
 pkill -f mcp # will kill all of them.  I have also MCP setup for claude desktop, so not a good idea
