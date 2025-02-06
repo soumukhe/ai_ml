@@ -1,6 +1,7 @@
 # TypeScript Project Setup Guide
 
-## Tools  `Thank you Kevin Leneway!`
+## Tools:
+**`Thank you Kevin Leneway!`**
 - https://github.com/kleneway/awesome-cursor-mpc-server
 - https://www.youtube.com/watch?v=MAicJ6KKccU&t=88s
 - https://docs.cursor.com/advanced/model-context-protocol
