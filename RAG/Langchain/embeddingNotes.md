@@ -21,6 +21,7 @@
 | Feature | GTE-large | Instructor-xl |
 |---------|-----------|---------------|
 | Embedding Dimensions | 768 | 1024 |
+| Token Limit | 512 | 1024 |
 | Processing Speed | 3-4x faster | Slower |
 | Memory Usage | Lower | Higher |
 | Semantic Understanding | Good | Excellent |
@@ -131,10 +132,16 @@ retriever = vector_store.as_retriever(
 ## Important Notes
 
 1. **Token Limits and Chunk Sizing (CRITICAL)**:
-   - Chunk size MUST NOT exceed embedding model's token dimension
-   - GTE-large: Maximum 512 tokens (use chunk_size ≤ 450 for safety)
-   - Instructor-xl: Maximum 1024 tokens (use chunk_size ≤ 1000 for safety)
-   - Exceeding these limits will cause embedding failures
+   - Do not confuse token limits with embedding dimensions:
+     - Token Limit: Maximum input text length (in tokens)
+     - Embedding Dimensions: Size of output vector (768 or 1024)
+   - Input Token Limits:
+     - GTE-large: Maximum 512 input tokens (use chunk_size ≤ 450 for safety)
+     - Instructor-xl: Maximum 1024 input tokens (use chunk_size ≤ 1000 for safety)
+   - Output Embedding Dimensions:
+     - GTE-large: 768-dimensional vectors
+     - Instructor-xl: 1024-dimensional vectors
+   - Exceeding token limits will cause embedding failures
    - Always leave buffer for special tokens and metadata
 
 2. **Vector Store Compatibility**:
@@ -218,6 +225,57 @@ if deleted_files:
 | Adding Documents | Quick | Only processes new documents |
 | Deleting Documents | Long | Must reprocess all remaining documents |
 | Updating Documents | Quick | Only processes modified documents |
+
+## Retrieval Techniques
+
+### Maximal Marginal Relevance (MMR)
+
+#### Overview
+MMR is an advanced retrieval technique that balances between relevance and diversity in search results. Unlike simple similarity search, MMR helps avoid redundant information while maintaining relevance to the query.
+
+#### Implementation
+```python
+retriever = vector_store.as_retriever(
+    search_type='mmr',
+    search_kwargs={
+        'k': 15,      # Number of results to return
+        'fetch_k': 20  # Initial candidate pool size
+    }
+)
+```
+
+#### How It Works
+1. **Initial Retrieval**: Fetches a larger pool of candidates (`fetch_k=20`)
+2. **Selection Process**: Selects final results (`k=15`) by balancing:
+   - Relevance to the query
+   - Diversity from already selected documents
+
+#### Benefits
+- Reduces redundancy in search results
+- Provides broader context from different sources
+- Improves answer comprehensiveness
+- Better handles multi-aspect questions
+
+#### Example Results Comparison
+
+**Simple Similarity Search**:
+Often returns redundant information with similar chunks repeating the same basic information.
+
+**MMR-based Search**:
+Returns comprehensive, structured information covering multiple aspects:
+- Basic definitions
+- Technical details
+- Features and capabilities
+- Related information from different document sections
+
+#### Best Practices for MMR
+1. Set `fetch_k` higher than `k` (typically 1.5x to 2x)
+2. Adjust based on:
+   - Document collection size
+   - Query complexity
+   - Response comprehensiveness needs
+3. Monitor retrieval quality and adjust parameters accordingly
+4. Consider document characteristics when setting parameters
 
 ## Conclusion
 
