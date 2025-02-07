@@ -354,20 +354,22 @@ def suppress_stdout_stderr():
 @st.cache_resource
 def load_models():
     """Load and cache the ML models"""
-    # Check for MPS (Metal Performance Shaders) availability on Mac
-    if torch.backends.mps.is_available():
-        device = torch.device("mps")
-        device_name = "Apple M-series GPU (MPS)"
-    elif torch.cuda.is_available():
-        device = torch.device("cuda")
-        device_name = "NVIDIA GPU (CUDA)"
-    else:
-        device = torch.device("cpu")
-        device_name = "CPU"
-    
-    st.sidebar.info(f"Using device: {device_name}")
-    
     try:
+        # First try CUDA
+        if torch.cuda.is_available():
+            device = torch.device("cuda")
+            device_name = "NVIDIA GPU (CUDA)"
+        # Then try MPS (for Apple Silicon)
+        elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+            device = torch.device("mps")
+            device_name = "Apple M-series GPU (MPS)"
+        # Fallback to CPU
+        else:
+            device = torch.device("cpu")
+            device_name = "CPU"
+        
+        st.sidebar.info(f"Using device: {device_name}")
+        
         # Load embedding model
         embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
         embedding_model.to(device)  # Move model to appropriate device
@@ -410,11 +412,11 @@ def get_embeddings_batch(texts, model, batch_size=None):
     
     try:
         # Determine optimal batch size based on available memory and device
-        if model.device.type in ['cuda', 'mps']:
-            # Larger batch size for GPU/MPS
+        if model.device.type == 'cuda':
+            # Larger batch size for GPU
             batch_size = min(CONFIG['batch']['gpu_batch_size'], len(cleaned_texts))
         else:
-            # Smaller batch size for CPU
+            # Smaller batch size for CPU/MPS
             batch_size = min(CONFIG['batch']['cpu_batch_size'], len(cleaned_texts))
         
         # Custom progress callback
@@ -443,10 +445,9 @@ def get_embeddings_batch(texts, model, batch_size=None):
         embedding_progress.empty()
         embedding_status.empty()
         
-        # Free up memory
-        torch.cuda.empty_cache() if torch.cuda.is_available() else None
-        if hasattr(torch.mps, 'empty_cache'):
-            torch.mps.empty_cache()
+        # Free up memory based on device type
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
         
         return embeddings
         
