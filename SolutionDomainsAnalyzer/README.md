@@ -75,10 +75,10 @@ A powerful Streamlit application for analyzing and processing solutions domain d
   - Runs locally for sentiment and feature importance classification
   - No data sent to external services
   
-- **Text Embeddings**: all-MiniLM-L6-v2 (SentenceTransformer)
+- **Text Embeddings**: hkunlp/instructor-xl (SentenceTransformer)
   - Local embedding generation for duplicate detection
   - Fully offline processing
-  - 384-dimensional embeddings
+  - 1024-dimensional embeddings
 
 ### Cloud-Based Components
 - **Fuzzy Search**: Langchain with BridgeIT Authentication
@@ -282,4 +282,100 @@ For issues and feature requests, please contact the development team or create a
 
 ## License
 
-© 2024 Solutions Domain Analyzer. All rights reserved. 
+© 2024 Solutions Domain Analyzer. All rights reserved.
+
+## Recent Improvements
+
+### Core Enhancements
+1. **Centralized Configuration**
+   - Added CONFIG dictionary for easy parameter management
+   - Configurable retry settings and timeouts
+   - Adjustable batch sizes for GPU/CPU processing
+   - Customizable similarity thresholds for duplicate detection
+
+2. **Search Functionality**
+   - Enhanced query processing with better pattern matching
+   - Improved date handling with UTC timezone support
+   - Better handling of exact vs. partial matches
+   - Support for complex multi-condition queries
+   - Intelligent retry mechanism with configurable attempts
+
+3. **Error Handling & Reliability**
+   - Robust error handling with detailed error messages
+   - Progress tracking for all operations
+   - Graceful fallback mechanisms
+   - Better handling of edge cases
+   - Improved validation of input data
+
+4. **Performance Optimizations**
+   - Optimized batch processing for embeddings
+   - Improved memory management
+   - Better handling of large datasets
+   - Reduced redundant operations
+   - Optimized duplicate detection algorithm
+
+5. **User Experience**
+   - Clearer progress indicators
+   - Better status messages
+   - More informative error messages
+   - Enhanced example queries
+   - Improved download options
+
+### Version-Specific Improvements
+
+#### BridgeIT Version (app_BIT.py)
+- Enhanced OAuth token management
+- Improved error handling for token expiration
+- Better handling of BridgeIT-specific responses
+- Optimized API calls to reduce latency
+
+#### OpenAI Version (app_OpenAI.py)
+- Streamlined authentication process
+- Optimized token usage
+- Enhanced model response handling
+- Better integration with OpenAI's chat models
+
+### Search Query Examples
+Both versions now support advanced query patterns:
+```
+1. Complex Date Queries:
+   - "Show me records between March 15th 2024 and March 16th 2024"
+   - "Show me all entries from April 2024"
+
+2. Multi-Condition Queries:
+   - "Show me rows where account name has at&t and sentiment is negative"
+   - "Show me all rows that are duplicates and have campus in solution domain"
+
+3. Exact vs Partial Matching:
+   - "Show me rows that have exactly highRating"
+   - "Show me rows where solution domain contains networking"
+
+4. Combined Criteria:
+   - "Show me all rows that are duplicates, have campus in solution domain, have negative sentiment, and were created in April 2024"
+   - "Show me all rows that have exactly highRating and are duplicates"
+```
+
+### Technical Improvements
+1. **Data Processing**
+   - Enhanced date parsing and validation
+   - Better handling of missing values
+   - Improved text cleaning and normalization
+   - More efficient duplicate detection
+
+2. **Search Engine**
+   - Better query parsing and understanding
+   - Enhanced pattern matching
+   - Improved result ranking
+   - More accurate duplicate detection
+
+3. **User Interface**
+   - Cleaner progress indicators
+   - Better error messaging
+   - Enhanced status updates
+   - Improved download options
+
+4. **Code Quality**
+   - Better code organization
+   - Enhanced documentation
+   - Improved error handling
+   - More consistent naming conventions 
