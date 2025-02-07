@@ -526,9 +526,9 @@ CONFIG = {
     # Agent settings
     'agent': {
         'max_iterations': 5,
-        'max_execution_time': 90.0,
+        'max_execution_time': 110.0,
         'temperature': 0,
-        'max_tokens': 1000,
+        'max_tokens': 2000,
     },
     
     # Retry settings
