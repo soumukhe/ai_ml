@@ -4,7 +4,10 @@ numpy
 scikit-learn
 
 # Deep learning and transformers
-torch
+--find-links https://download.pytorch.org/whl/nightly/cpu/torch_nightly.html
+torch>=2.3.0.dev
+torchvision>=0.18.0
+torchaudio>=2.2.0
 transformers
 sentence-transformers
 tqdm
