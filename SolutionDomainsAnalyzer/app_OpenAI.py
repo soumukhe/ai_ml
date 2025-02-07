@@ -228,11 +228,11 @@ with st.sidebar.expander("Sentiment Analysis", expanded=False):
     
 with st.sidebar.expander("Text Embeddings", expanded=False):
     st.markdown("""
-    - **Model**: hkunlp/instructor-xl
+    - **Model**: all-MiniLM-L6-v2
     - **Type**: SentenceTransformer
     - **Usage**: Duplicate detection
     - ✅ Fully offline processing
-    - 1024-dimensional embeddings
+    - 384-dimensional embeddings
     """)
 
 # Cloud Component
@@ -295,44 +295,110 @@ def suppress_stdout_stderr():
 @st.cache_resource
 def load_models():
     """Load and cache the ML models"""
-    # Simpler model loading without suppression
-    #embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-    embedding_model = SentenceTransformer("hkunlp/instructor-xl")
-    embedding_model.to('cpu')  # Explicitly use CPU for consistency
-    
-    classifier = pipeline("zero-shot-classification",
-                        model="facebook/bart-large-mnli",
-                        clean_up_tokenization_spaces=True,
-                        multi_label=True,
-                        device='cpu')  # Explicitly use CPU
-    return embedding_model, classifier
+    try:
+        # First try CUDA
+        if torch.cuda.is_available():
+            device = torch.device("cuda")
+            device_name = "NVIDIA GPU (CUDA)"
+        # Then try MPS (for Apple Silicon)
+        elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+            device = torch.device("mps")
+            device_name = "Apple M-series GPU (MPS)"
+        # Fallback to CPU
+        else:
+            device = torch.device("cpu")
+            device_name = "CPU"
+        
+        st.sidebar.info(f"Using device: {device_name}")
+        
+        # Load embedding model
+        embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+        embedding_model.to(device)  # Move model to appropriate device
+        
+        # Load classifier - Note: Some models might not support MPS yet
+        if device.type == "mps":
+            classifier_device = -1  # Fall back to CPU for classifier if using MPS
+        else:
+            classifier_device = 0 if torch.cuda.is_available() else -1
+            
+        classifier = pipeline("zero-shot-classification",
+                            model="facebook/bart-large-mnli",
+                            clean_up_tokenization_spaces=True,
+                            multi_label=True,
+                            device=classifier_device)
+        return embedding_model, classifier
+    except Exception as e:
+        st.warning(f"Device initialization error: {str(e)}. Falling back to CPU.")
+        # Fallback to CPU
+        embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+        embedding_model.to('cpu')
+        classifier = pipeline("zero-shot-classification",
+                            model="facebook/bart-large-mnli",
+                            clean_up_tokenization_spaces=True,
+                            multi_label=True,
+                            device=-1)
+        return embedding_model, classifier
 
-def get_embeddings_batch(texts, model, batch_size=32):
+def get_embeddings_batch(texts, model, batch_size=None):
     """Get embeddings for a batch of texts using Hugging Face model"""
-    all_embeddings = []
     total_expected = len(texts)
+    
+    # Create progress tracking
+    embedding_progress = st.progress(0)
+    embedding_status = st.empty()
+    embedding_status.text("Preparing texts for embedding...")
     
     # Clean all texts first
     cleaned_texts = [clean_text(text) for text in texts]
     
-    # Process in batches - simplified batch processing
-    for i in range(0, len(cleaned_texts), batch_size):
-        batch = cleaned_texts[i:i + batch_size]
-        if batch:  # Only process if batch is not empty
-            try:
-                # Get embeddings directly without filtering
-                embeddings = model.encode(batch, 
-                                       normalize_embeddings=True,
-                                       show_progress_bar=False)
-                all_embeddings.extend(embeddings)
-            except Exception as e:
-                st.error(f"Error in batch {i//batch_size + 1}: {str(e)}")
-                # Fill with zeros for failed batch
-                all_embeddings.extend([np.zeros(384) for _ in range(len(batch))])
-    
-    # Ensure we have exactly the right number of embeddings
-    result = np.array(all_embeddings[:total_expected])
-    return result
+    try:
+        # Determine optimal batch size based on available memory and device
+        if model.device.type == 'cuda':
+            # Larger batch size for GPU
+            batch_size = min(CONFIG['batch']['gpu_batch_size'], len(cleaned_texts))
+        else:
+            # Smaller batch size for CPU/MPS
+            batch_size = min(CONFIG['batch']['cpu_batch_size'], len(cleaned_texts))
+        
+        # Custom progress callback
+        def progress_callback(current, total):
+            progress = float(current) / float(total)
+            embedding_progress.progress(progress)
+            embedding_status.text(f"Generating embeddings... {current}/{total} texts processed")
+        
+        # Process all texts at once with batching
+        embeddings = model.encode(
+            cleaned_texts,
+            batch_size=batch_size,
+            show_progress_bar=False,  # We'll use our own progress bar
+            convert_to_tensor=True,
+            normalize_embeddings=True,
+            device=model.device,  # Use the same device as the model
+            callback_steps=max(1, len(cleaned_texts) // 20),  # Update progress every 5%
+            callback=progress_callback
+        )
+        
+        # Convert to numpy if it's a tensor
+        if torch.is_tensor(embeddings):
+            embeddings = embeddings.cpu().numpy()
+        
+        # Clear progress indicators
+        embedding_progress.empty()
+        embedding_status.empty()
+        
+        # Free up memory based on device type
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        
+        return embeddings
+        
+    except Exception as e:
+        # Clear progress indicators on error
+        embedding_progress.empty()
+        embedding_status.empty()
+        st.error(f"Error in embedding generation: {str(e)}")
+        # Return zero vectors as fallback
+        return np.zeros((total_expected, model.get_sentence_embedding_dimension()))
 
 def process_domain_data(df, domain, embedding_model, classifier, skip_duplicates=False):
     """Process data for a specific domain"""
@@ -455,150 +521,182 @@ def process_domain_data(df, domain, embedding_model, classifier, skip_duplicates
         progress_bar.empty()
         raise e
 
+# Configuration parameters
+CONFIG = {
+    # Agent settings
+    'agent': {
+        'max_iterations': 5,
+        'max_execution_time': 90.0,
+        'temperature': 0,
+        'max_tokens': 1000,
+    },
+    
+    # Retry settings
+    'retry': {
+        'max_retries': 7,
+        'sleep_seconds': 4,
+    },
+    
+    # Duplicate detection settings
+    'duplicates': {
+        'similarity_threshold': 0.95,
+    },
+    
+    # Sentiment analysis settings
+    'sentiment': {
+        'labels': ["highRating+", "highRating", "Neutral", "Negative", "Negative-"],
+        'hypothesis_template': "This feature request is {}."
+    },
+    
+    # Batch processing settings
+    'batch': {
+        'gpu_batch_size': 128,
+        'cpu_batch_size': 32,
+    }
+}
+
 def run_fuzzy_search_query(query, df, llm):
     try:
-        with open('terminal_output.txt', 'a') as log_file:
-            log_file.write(f"\nProcessing query: {query}\n")
-            
-            # Create simplified dataframe for the agent
-            simplified_df = df.copy()
-            simplified_df['row_number'] = range(len(df))
-            simplified_df['Created Date'] = pd.to_datetime(simplified_df['Created Date'])
-            
-            finder_agent = create_pandas_dataframe_agent(
-                llm=llm,
-                df=simplified_df,
-                verbose=True,
-                max_iterations=3,
-                max_execution_time=30.0,
-                allow_dangerous_code=True,
-                include_df_in_prompt=True,
-                prefix="""You are working with a pandas dataframe that has these columns: Solution Domain, Account Name, Created Date, Product, Use Case, Created By, Status, Closed Date, Solution Domain, Next Step, Original_Row_Number, Reason_W_AddDetails, RequestFeatureImportance, Sentiment, possibleDuplicates, CrossDomainDuplicates.
+        # Create simplified dataframe for the agent with row numbers
+        df_simple = df.copy()
+        df_simple.reset_index(inplace=True)
+        df_simple['row_number'] = df_simple.index
+        df_simple['Created Date'] = pd.to_datetime(df_simple['Created Date']).dt.tz_localize('UTC')
+        
+        # Initialize the agent with clear instructions
+        prefix = """You are working with a pandas dataframe to find matching rows.
+When you find the matching rows, you MUST respond in this format:
+Thought: I need to find rows that match the criteria
+Action: python_repl_ast
+Action Input: df[(df['Created Date'] >= '2024-03-15') & (df['Created Date'] <= '2024-03-16')]['row_number'].tolist()
+Observation: [14, 176, 283]
+Thought: I now have the row numbers
+Final Answer: [14, 176, 283]
 
-Example queries and their patterns:
-- "Show me all rows that have duplicates":
-  df[((df['possibleDuplicates'].fillna('').str.len() > 0) | (df['CrossDomainDuplicates'].fillna('').str.len() > 0))]['row_number'].tolist()
+Example patterns:
+1. For duplicates in a specific domain:
+   df[df['possibleDuplicates'].str.contains('Data Center Networking', case=False, na=False) | df['CrossDomainDuplicates'].str.contains('Data Center Networking', case=False, na=False)]['row_number'].tolist()
 
-- "Show me all rows that have exactly Negative sentiment":
-  df[df['Sentiment'] == 'Negative']['row_number'].tolist()
+2. For dates:
+   df[(df['Created Date'] >= 'YYYY-MM-DD') & (df['Created Date'] <= 'YYYY-MM-DD')]['row_number'].tolist()
 
-- "Show me all rows where Solution Domain contains campus":
-  df[df['Solution Domain'].str.lower().str.contains('campus', na=False)]['row_number'].tolist()
+3. For exact sentiment matches:
+   df[df['Sentiment'] == 'Negative']['row_number'].tolist()
 
-- "Show me all rows between March 15th and March 16th 2024":
-  df[(df['Created Date'] >= '2024-03-15') & (df['Created Date'] <= '2024-03-16')]['row_number'].tolist()
+4. For domain searches:
+   df[df['Solution Domain'].str.contains('domain name', case=False, na=False)]['row_number'].tolist()
 
-- "Show me all rows where Account Name contains cisco":
-  df[df['Account Name: Account Name  ↑'].str.lower().str.contains('cisco', case=False, na=False)]['row_number'].tolist()
+5. For finding any duplicates:
+   df[((df['possibleDuplicates'].fillna('').str.len() > 0) | (df['CrossDomainDuplicates'].fillna('').str.len() > 0))]['row_number'].tolist()
 
-- "Show me all rows that have exactly highRating":
-  df[df['RequestFeatureImportance'] == 'highRating']['row_number'].tolist()
+Remember:
+1. Always use python_repl_ast as the action
+2. Put the pandas code in Action Input - make sure it ends with .tolist()
+3. Return the row numbers in Final Answer
+4. For dates, use the format 'YYYY-MM-DD' in comparisons
+5. Use str.contains() with na=False for partial matches
+6. Use exact matches (==) only when the query specifies 'exactly'
+7. For duplicates, check both possibleDuplicates and CrossDomainDuplicates columns
+8. When searching for duplicates in a specific domain, use case-insensitive search"""
 
-- "Show me all rows that have exactly highRating+":
-  df[df['RequestFeatureImportance'] == 'highRating+']['row_number'].tolist()
+        # Configure the agent
+        agent = create_pandas_dataframe_agent(
+            llm,
+            df_simple,
+            prefix=prefix,
+            max_iterations=CONFIG['agent']['max_iterations'],
+            max_execution_time=CONFIG['agent']['max_execution_time'],
+            verbose=True,
+            allow_dangerous_code=True
+        )
 
-- "Show me all rows that have exactly highRating+ and duplicates":
-  df[(df['RequestFeatureImportance'] == 'highRating+') & ((df['possibleDuplicates'].fillna('').str.len() > 0) | (df['CrossDomainDuplicates'].fillna('').str.len() > 0))]['row_number'].tolist()
-
-IMPORTANT: 
-1. Return ONLY the list of row numbers
-2. Do not append the results to the command
-3. If the query contains the word 'exactly', use exact match (==) with EXACT case matching
-4. If the query does not contain 'exactly', use case-insensitive contains
-5. Always handle NA values with na=False in str operations
-6. For RequestFeatureImportance and Sentiment columns, always use exact case matching (highRating, highRating+, Negative, etc.)""")
-            
-            log_file.write(f"Finding matching row numbers...\n")
-            
+        # Execute the query
+        response = agent.invoke({
+            "input": f"Find rows matching this query: {query}"
+        })
+        
+        # Extract the row numbers from the response
+        output = response.get('output', '')
+        print(f"Agent output: {output}")  # Debug print
+        
+        # Try to find a list of numbers in the output
+        matches = re.findall(r'\[[\d\s,]+\]', output)
+        if matches:
             try:
-                # Get matching row numbers
-                response = finder_agent.invoke({
-                    "input": f"Find matching rows for this query: {query}. Return ONLY the list of row numbers in the format [n1, n2, ...]. Do not include any other text or explanation."
-                })
-                
-                # Extract and clean output
-                output = response['output'] if isinstance(response, dict) else str(response)
-                log_file.write(f"Raw output: {output}\n")
-                
-                # Look for list pattern [n1, n2, n3]
-                import re
-                list_matches = re.findall(r'\[([0-9, ]+)\]', output)
-                if list_matches:
-                    # Take the first list found
-                    numbers_str = list_matches[0]
-                    row_numbers = [int(n.strip()) for n in numbers_str.split(',') if n.strip()]
-                    log_file.write(f"Extracted row numbers: {row_numbers}\n")
-                    
-                    if row_numbers:
-                        # Get the matching rows and convert to markdown
-                        result_df = df.iloc[row_numbers]
-                        log_file.write(f"Found {len(row_numbers)} matching rows\n")
+                # Take the last list found (usually the Final Answer)
+                row_numbers = eval(matches[-1])
+                if isinstance(row_numbers, list) and row_numbers:
+                    result_df = df.iloc[row_numbers]
+                    if len(result_df) > 0:
                         return result_df.to_markdown(index=False)
-                
-                # If we get here, no valid results were found
-                log_file.write("No matching results found\n")
                 return "No matching results found."
-                    
             except Exception as e:
-                log_file.write(f"Error in agent execution: {str(e)}\n")
-                return f"Error: {str(e)}"
-                
+                print(f"Error evaluating row numbers: {str(e)}")
+                return f"Error: Failed to process row numbers: {str(e)}"
+        
+        return "No matching results found."
+        
     except Exception as e:
-        error_msg = f"Error processing query: {str(e)}"
-        print(error_msg)
-        with open('terminal_output.txt', 'a') as log_file:
-            log_file.write(f"\n{error_msg}\n")
+        print(f"Error in query processing: {str(e)}")
         return f"Error: {str(e)}"
 
-def run_fuzzy_search_query_with_retry(query, df, llm, max_retries=3):
+def run_fuzzy_search_query_with_retry(query, df, llm, max_retries=None):
     """Run fuzzy search query with retry mechanism"""
+    if max_retries is None:
+        max_retries = CONFIG['retry']['max_retries']
+        
     progress_bar = st.progress(0, "Processing query...")
     status_text = st.empty()
     
     for attempt in range(max_retries):
         try:
             # Update progress
-            progress_bar.progress((attempt + 1) / max_retries, f"Attempt {attempt + 1} of {max_retries}")
+            progress = (attempt + 1) / max_retries
+            progress_bar.progress(progress, f"Attempt {attempt + 1} of {max_retries}")
             status_text.text(f"Processing attempt {attempt + 1}...")
             
-            # Run the query with a timeout
+            # Run the query
             result = run_fuzzy_search_query(query, df, llm)
             
-            # If we got a valid result (not None and not an error message)
-            if result and isinstance(result, str):
+            if result:
                 if result == "No matching results found.":
+                    if attempt < max_retries - 1:
+                        status_text.text(f"No results found, retrying... ({attempt + 2} of {max_retries})")
+                        time.sleep(CONFIG['retry']['sleep_seconds'])
+                        continue
                     progress_bar.empty()
                     status_text.empty()
                     return result
-                elif not result.startswith("Error:"):
-                    progress_bar.empty()
-                    status_text.empty()
-                    return result  # Return immediately on success
                 elif result.startswith("Error:"):
-                    # Only retry on errors if not the last attempt
                     if attempt < max_retries - 1:
                         status_text.text(f"Error occurred, retrying... ({attempt + 2} of {max_retries})")
-                        time.sleep(2)
+                        time.sleep(CONFIG['retry']['sleep_seconds'])
                         continue
-                    else:
-                        progress_bar.empty()
-                        status_text.empty()
-                        return result  # Return error on last attempt
+                    progress_bar.empty()
+                    status_text.empty()
+                    return result
+                else:
+                    # Success - we got a markdown table
+                    progress_bar.empty()
+                    status_text.empty()
+                    return result
             
             # If we get here with no valid result and it's not the last attempt, retry
             if attempt < max_retries - 1:
                 status_text.text(f"No valid result, retrying... ({attempt + 2} of {max_retries})")
-                time.sleep(2)
+                time.sleep(CONFIG['retry']['sleep_seconds'])
+                continue
                 
         except Exception as e:
             print(f"Attempt {attempt + 1} failed: {str(e)}")
             if attempt < max_retries - 1:
                 status_text.text(f"Error occurred, retrying... ({attempt + 2} of {max_retries})")
-                time.sleep(2)
+                time.sleep(CONFIG['retry']['sleep_seconds'])
             else:
                 progress_bar.empty()
                 status_text.empty()
-                raise e
+                st.error(f"All retry attempts failed: {str(e)}")
+                return "No matching results found."
     
     # Clear progress indicators
     progress_bar.empty()
