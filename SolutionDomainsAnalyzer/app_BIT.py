@@ -1213,7 +1213,8 @@ if st.session_state.processed_df is not None:
             - Show me all rows that have highrating
             - Show me all rows that have highrating+
             - show me all the rows that have exactly highrating
-            - show me all the rows that have exactly highrating and also duplicates 
+            - show me all the rows that have exactly highrating and also duplicates
+            - Show me the records that have cross domain duplicates and sentiment has negative, then from the cross domain duplicates get the row number that is matched and show me that row number for the Original Row Number column along with the cross domain duplicate rows
             """)
         
         # Create the fuzzy search interface
