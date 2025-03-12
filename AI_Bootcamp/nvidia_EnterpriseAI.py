@@ -87,7 +87,10 @@ def main():
         return
     
     # Send your query to the model
-    messages = [{"role": "user", "content": args.query}]
+        messages = [
+        {"role": "system", "content": args.system},
+        {"role": "user", "content": args.query}
+        ]
     
     try:
         response = client.chat_completion(
