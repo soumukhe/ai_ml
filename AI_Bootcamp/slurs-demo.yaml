@@ -1,0 +1,171 @@
+---
+# First create the namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: slurm-demo
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: slurm-config
+  namespace: slurm-demo
+data:
+  slurm.conf: |
+    # slurm.conf
+    ClusterName=k8s-slurm
+    SlurmctldHost=localhost
+    MpiDefault=none
+    ProctrackType=proctrack/linuxproc
+    ReturnToService=1
+    SlurmctldPidFile=/var/run/slurm/slurmctld.pid
+    SlurmdPidFile=/var/run/slurm/slurmd.pid
+    SlurmdSpoolDir=/var/spool/slurmd
+    StateSaveLocation=/var/spool/slurmctld
+    SwitchType=switch/none
+    TaskPlugin=task/none
+    
+    # SCHEDULING
+    SchedulerType=sched/backfill
+    SelectType=select/cons_tres
+    SelectTypeParameters=CR_Core
+    
+    # LOGGING
+    SlurmctldDebug=info
+    SlurmdDebug=info
+    
+    # COMPUTE NODES
+    # Using the pod's hostname as the node name
+    NodeName=DEFAULT CPUs=1 State=UNKNOWN
+    NodeName=slurm-controller State=UNKNOWN
+    PartitionName=debug Nodes=slurm-controller Default=YES MaxTime=INFINITE State=UP
+
+  cgroup.conf: |
+    CgroupMountpoint=/sys/fs/cgroup
+    CgroupAutomount=no
+    ConstrainCores=no
+    ConstrainRAMSpace=no
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: slurm-controller
+  namespace: slurm-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: slurm-controller
+  template:
+    metadata:
+      labels:
+        app: slurm-controller
+    spec:
+      containers:
+      - name: slurm-controller
+        image: giovtorres/slurm-docker-cluster:latest
+        command: ["/bin/bash", "-c"]
+        args:
+          - |
+            echo "Starting Munge and Slurm services..."
+            # Use the ConfigMap
+            cp /etc/slurm-config/slurm.conf /etc/slurm/slurm.conf
+            cp /etc/slurm-config/cgroup.conf /etc/slurm/cgroup.conf
+            
+            # Create Munge key if it doesn't exist
+            if [ ! -f /etc/munge/munge.key ]; then
+              echo "Creating new Munge key..."
+              /usr/sbin/create-munge-key -f
+            fi
+            
+            # Set proper permissions
+            chown -R munge:munge /etc/munge /var/lib/munge /var/log/munge /var/run/munge
+            chmod 0700 /etc/munge
+            chmod 0711 /var/lib/munge
+            chmod 0700 /var/log/munge
+            chmod 0755 /var/run/munge
+            
+            # Start Munge
+            echo "Starting Munge daemon..."
+            runuser -u munge /usr/sbin/munged
+            
+            # Wait for Munge to initialize
+            sleep 5
+            
+            # Create a hostname symlink for Slurm to recognize the node
+            export POD_NAME=$(hostname)
+            echo "Creating hostname symlink: $POD_NAME -> slurm-controller"
+            ln -sf $POD_NAME /etc/hosts
+            echo "127.0.0.1 slurm-controller" >> /etc/hosts
+            
+            # Start Slurm services
+            echo "Starting Slurm controller..."
+            /usr/sbin/slurmctld -D &
+            
+            echo "Waiting for controller to be ready..."
+            sleep 5
+            
+            echo "Starting Slurm daemon..."
+            /usr/sbin/slurmd -D -N slurm-controller &
+            
+            # Keep container running
+            tail -f /dev/null
+        ports:
+        - containerPort: 6817
+          name: slurmctld
+        - containerPort: 6818
+          name: slurmd
+        volumeMounts:
+        - name: slurm-config-volume
+          mountPath: /etc/slurm-config
+        - name: var-run-slurm
+          mountPath: /var/run/slurm
+        - name: var-spool-slurmd
+          mountPath: /var/spool/slurmd
+        - name: var-spool-slurmctld
+          mountPath: /var/spool/slurmctld
+        - name: munge-key
+          mountPath: /etc/munge
+        - name: munge-var-lib
+          mountPath: /var/lib/munge
+        - name: munge-var-log
+          mountPath: /var/log/munge
+        - name: munge-var-run
+          mountPath: /var/run/munge
+      volumes:
+      - name: slurm-config-volume
+        configMap:
+          name: slurm-config
+      - name: var-run-slurm
+        emptyDir: {}
+      - name: var-spool-slurmd
+        emptyDir: {}
+      - name: var-spool-slurmctld
+        emptyDir: {}
+      - name: munge-key
+        emptyDir: {}
+      - name: munge-var-lib
+        emptyDir: {}
+      - name: munge-var-log
+        emptyDir: {}
+      - name: munge-var-run
+        emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: slurm-service
+  namespace: slurm-demo
+spec:
+  selector:
+    app: slurm-controller
+  ports:
+  - name: slurmctld
+    port: 6817
+    targetPort: slurmctld
+  - name: slurmd
+    port: 6818
+    targetPort: slurmd
+  type: ClusterIP
