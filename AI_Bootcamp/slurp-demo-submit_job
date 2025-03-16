@@ -1,0 +1,19 @@
+cat > test-job.sh << 'EOF'
+#!/bin/bash
+#SBATCH --job-name=test-job
+#SBATCH --output=test-job-%j.out
+#SBATCH --error=test-job-%j.err
+#SBATCH --time=01:00:00
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+
+echo "Hello from Slurm job $SLURM_JOB_ID"
+echo "Running on node $HOSTNAME"
+echo "Current working directory: $PWD"
+echo "Number of CPUs: $SLURM_CPUS_PER_TASK"
+
+# Simulate some work
+sleep 10
+
+echo "Job completed successfully"
+EOF
