@@ -59,11 +59,18 @@ sudo mv /tmp/eksctl /usr/local/bin
 cat > cluster.yaml << 'EOF'
 apiVersion: eksctl.io/v1alpha5
 kind: ClusterConfig
-
 metadata:
   name: slurm-demo
-  region: us-west-2  # Change this to your preferred region
-
+  region: us-west-2
+vpc:
+  cidr: 192.168.0.0/16
+  autoAllocateIPv6: false
+  nat:
+    gateway: Disable
+  clusterEndpoints:
+    publicAccess: true
+    privateAccess: false
+  publicAccessCIDRs: ["0.0.0.0/0"]
 nodeGroups:
   - name: ng-1
     instanceType: t3.medium
@@ -72,14 +79,13 @@ nodeGroups:
     maxSize: 3
     labels:
       role: worker
+    privateNetworking: false  # This explicitly requests public subnets
     iam:
       withAddonPolicies:
         imageBuilder: true
         autoScaler: true
         ebs: true
-        albIngress: true
-
-# Enable control plane to serve as worker node
+        awsLoadBalancerController: true
 managedNodeGroups:
   - name: control-workers
     instanceType: t3.medium
@@ -88,7 +94,8 @@ managedNodeGroups:
     maxSize: 1
     labels:
       role: control-worker
-    taints: []  # No taints to allow pods to schedule here
+    privateNetworking: false  # This explicitly requests public subnets
+    taints: [] # no taints, so master can be worker also
 EOF
 ```
 
