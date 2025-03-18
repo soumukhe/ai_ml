@@ -1,0 +1,172 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ai-ml-demo
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: slinky-sa
+  namespace: ai-ml-demo
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: slinky-role
+  namespace: ai-ml-demo
+rules:
+- apiGroups: ["", "batch"]
+  resources: ["pods", "jobs"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: slinky-rolebinding
+  namespace: ai-ml-demo
+subjects:
+- kind: ServiceAccount
+  name: slinky-sa
+  namespace: ai-ml-demo
+roleRef:
+  kind: ClusterRole
+  name: edit
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: slinky-demo-scripts
+  namespace: ai-ml-demo
+data:
+  slinky-submit.sh: |
+    #!/bin/bash
+    # A simple script to demonstrate Slinky-like functionality
+    # Usage: ./slinky-submit.sh <job_name> <gpu_count> <memory_gb>
+    
+    JOB_NAME=${1:-"ml-demo-job"}
+    GPU_COUNT=${2:-1}
+    MEMORY=${3:-"4Gi"}
+    
+    echo "Submitting job to Slinky: $JOB_NAME"
+    echo "Requested resources: $GPU_COUNT GPUs, $MEMORY memory"
+    
+    # Create a Kubernetes job that simulates running on SLURM
+    cat <<EOT | kubectl apply -n ai-ml-demo -f -
+    apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: $JOB_NAME
+      labels:
+        slinky.io/managed: "true"
+        slinky.io/job-type: "ai-ml"
+    spec:
+      template:
+        metadata:
+          labels:
+            slinky.io/managed: "true"
+        spec:
+          containers:
+          - name: tensorflow-job
+            image: tensorflow/tensorflow:latest-gpu
+            command: ["python", "-c", "
+    import tensorflow as tf;
+    import time;
+    print('\\n\\n====== Slinky + SLURM AI/ML Job ======');
+    print('TensorFlow version:', tf.__version__);
+    print('GPU Available:', tf.config.list_physical_devices('GPU'));
+    print('\\nRunning simple MNIST training...\\n');
+    mnist = tf.keras.datasets.mnist;
+    (x_train, y_train), (x_test, y_test) = mnist.load_data();
+    x_train, x_test = x_train / 255.0, x_test / 255.0;
+    model = tf.keras.models.Sequential([
+      tf.keras.layers.Flatten(input_shape=(28, 28)),
+      tf.keras.layers.Dense(128, activation='relu'),
+      tf.keras.layers.Dropout(0.2),
+      tf.keras.layers.Dense(10)
+    ]);
+    print('\\nCompiling model...');
+    model.compile(optimizer='adam',
+                  loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+                  metrics=['accuracy']);
+    print('\\nTraining model...');
+    model.fit(x_train, y_train, epochs=2);
+    print('\\nEvaluating model...');
+    model.evaluate(x_test, y_test);
+    print('\\nJob completed successfully!');
+    print('=======================================\\n')
+            "]
+            resources:
+              limits:
+                nvidia.com/gpu: $GPU_COUNT
+                memory: $MEMORY
+              requests:
+                memory: $MEMORY
+          restartPolicy: Never
+      backoffLimit: 0
+    EOT
+    
+    echo "Job submitted to Kubernetes via Slinky integration"
+    echo "To monitor job: kubectl -n ai-ml-demo logs -f job/$JOB_NAME"
+    
+  sbatch-example.sh: |
+    #!/bin/bash
+    #SBATCH --job-name=mnist-training
+    #SBATCH --output=slurm-%j.out
+    #SBATCH --error=slurm-%j.err
+    #SBATCH --ntasks=1
+    #SBATCH --cpus-per-task=4
+    #SBATCH --mem=8G
+    #SBATCH --gres=gpu:1
+    
+    # This script simulates using SBATCH to submit a job
+    # In a real Slinky setup, this would be processed by SLURM and passed to Kubernetes
+    
+    echo "SLURM_JOB_ID: $SLURM_JOB_ID"
+    echo "SLURM_JOB_NAME: $SLURM_JOB_NAME"
+    echo "SLURM_SUBMIT_DIR: $SLURM_SUBMIT_DIR"
+    
+    # With Slinky integration, this would be translated to Kubernetes pods
+    # For demo, we'll directly call our slinky-submit.sh
+    ./slinky-submit.sh $SLURM_JOB_NAME $SLURM_GPUS_PER_NODE $SLURM_MEM_PER_CPU
+    
+  slinky-dashboard.sh: |
+    #!/bin/bash
+    # A simple script to simulate a Slinky dashboard showing jobs
+    
+    echo "==================== Slinky Dashboard ===================="
+    echo "Integration between SLURM and Kubernetes"
+    echo "========================================================"
+    echo
+    echo "SLURM Jobs (passed to Kubernetes):"
+    echo "---------------------------------"
+    kubectl -n ai-ml-demo get jobs -l slinky.io/managed=true -o custom-columns=NAME:.metadata.name,STATUS:.status.conditions[0].type,START:.status.startTime,COMPLETIONS:.status.succeeded,DURATION:.status.completionTime
+    echo
+    echo "Kubernetes Pods (created by Slinky):"
+    echo "---------------------------------"
+    kubectl -n ai-ml-demo get pods -l slinky.io/managed=true
+    echo
+    echo "========================================================"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: slinky-demo
+  namespace: ai-ml-demo
+  labels:
+    app: slinky-demo
+spec:
+  serviceAccountName: slinky-sa
+  containers:
+  - name: slinky-control
+    image: bitnami/kubectl:latest
+    command: ["sleep", "infinity"]
+    volumeMounts:
+    - name: scripts
+      mountPath: /scripts
+  volumes:
+  - name: scripts
+    configMap:
+      name: slinky-demo-scripts
+      defaultMode: 0777
