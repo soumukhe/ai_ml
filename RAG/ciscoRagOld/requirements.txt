@@ -1,0 +1,14 @@
+python-dotenv>=1.0.0
+langchain>=0.1.0
+langchain-community>=0.0.13
+langchain-core>=0.1.10
+pypdf>=4.0.0
+pdfminer.six>=20221105
+sentence-transformers>=2.2.2
+watchdog>=3.0.0
+faiss-cpu>=1.7.4
+humanize>=4.9.0
+requests>=2.31.0
+streamlit>=1.29.0 
+pyPDF2
+openai
