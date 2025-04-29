@@ -1,0 +1,34 @@
+streamlit
+langchain-core
+langchain-community
+lark # Parser for LLMs, SelfQueryRetreiver uses this to parse the query
+langchain
+langgraph
+langchain-openai
+langchain-experimental
+langchain-huggingface
+huggingface-hub
+chromadb
+langchain_community
+sentence-transformers
+pypdf
+weave
+wandb
+pydantic
+groq
+mem0ai
+numpy
+pandas
+llama-parse
+llama-index-llms-langchain
+unstructured
+python-magic
+python-pptx
+ipython
+torch
+torchvision
+torchaudio
+tensorflow-metal  # For Metal acceleration on Mac
+matplotlib
+langchain-chroma
+pylint
