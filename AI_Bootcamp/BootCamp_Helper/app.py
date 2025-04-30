@@ -546,8 +546,23 @@ def modify_query_for_context(state: AgentState) -> AgentState:
         'fabric', 'architecture', 'network architecture',
         'networking', 'nvme', 'storage'
     ]
+    
+    # Keywords that indicate completely unrelated topics
+    unrelated_keywords = [
+        'eagle', 'bird', 'animal', 'sports', 'weather', 'food',
+        'music', 'movie', 'game', 'sport', 'travel', 'history',
+        'geography', 'politics', 'religion', 'art', 'literature'
+    ]
+    
     original_query = state['query']
     query = original_query.lower()
+    
+    # First check if the query is completely unrelated
+    if any(keyword in query for keyword in unrelated_keywords):
+        logger.info(f"Query is unrelated to AI/ML: {original_query}")
+        state['query'] = "This is an unrelated topic. Please ask about AI/ML concepts."
+        state['expanded_query'] = state['query']
+        return state
     
     # Check for multiple keywords or specific phrases
     keyword_count = sum(1 for keyword in context_keywords if keyword in query)
