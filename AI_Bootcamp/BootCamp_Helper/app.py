@@ -1,7 +1,15 @@
-import streamlit as st
 import os
-import platform
+# Set PyTorch thread settings via environment variables
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 import torch
+import streamlit as st
+import platform
 import requests
 import base64
 import logging
@@ -17,6 +25,7 @@ from langgraph.graph import StateGraph, START, END
 from typing import Dict, List, Any, TypedDict
 import re
 import time
+from datetime import datetime, timedelta
 
 # --- Configuration ---
 st.set_page_config(
@@ -29,7 +38,6 @@ st.set_page_config(
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
 load_dotenv(override=True)
 
 app_key = os.getenv('app_key')
@@ -43,22 +51,12 @@ if missing_vars:
     st.error(f"Missing required environment variables: {', '.join(missing_vars)}. Please check your .env file.")
     st.stop()
 
-@st.cache_resource
-def initialize_pytorch():
-    try:
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        if device == "cpu":
-            torch.set_num_threads(1)
-            torch.set_num_interop_threads(1)
-        _ = torch.tensor([1.0], device=device)
-        return device
-    except Exception as e:
-        logger.error(f"Error initializing PyTorch: {str(e)}")
-        st.error(f"Error initializing PyTorch: {str(e)}")
-        return "cpu"
-
-DEVICE = initialize_pytorch()
-
+# Set device and log PyTorch info
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+logger.info(f"Using device: {DEVICE}")
+if DEVICE == "cuda":
+    logger.info(f"GPU Device: {torch.cuda.get_device_name(0)}")
+    logger.info(f"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.2f} GB")
 
 class EmbeddingWrapper:
     def __init__(self, embed_func):
@@ -70,44 +68,14 @@ class EmbeddingWrapper:
             text = [text]
         return self.embed_func(text)[0]
 
-## BridgeIT Azure OpenAI
-# Configuration parameters
-CONFIG = {
-    # Agent settings
-    'agent': {
-        'max_iterations': 5,
-        'max_execution_time': 110.0,
-        'temperature': 0,
-        'max_tokens': 4000,
-    },
-    
-    # Retry settings
-    'retry': {
-        'max_retries': 2,
-        'retry_delay': 4,
-    },
-    
-    # Duplicate detection settings
-    'duplicates': {
-        'similarity_threshold': 0.95,  # Restored to original value for stricter duplicate detection
-    },
-    
-    # Sentiment analysis settings
-    'sentiment': {
-        'labels': ["highRating+", "highRating", "Neutral", "Negative", "Negative-"],
-        'hypothesis_template': "This feature request is {}."
-    },
-    
-    # Batch processing settings
-    'batch': {
-        'gpu_batch_size': 128,
-        'cpu_batch_size': 32,
-    }
-}
+# Add token refresh tracking
+last_token_refresh = datetime.now()
+TOKEN_REFRESH_INTERVAL = timedelta(hours=4)  # Refresh token every 4 hours
 
-def init_azure_openai():
-    """Initialize Azure OpenAI with hardcoded credentials and token refresh"""
-    def get_fresh_token():
+def get_fresh_token():
+    """Get a fresh token from Azure OpenAI"""
+    global last_token_refresh
+    try:
         url = "https://id.cisco.com/oauth2/default/v1/token"
         payload = "grant_type=client_credentials"
         value = base64.b64encode(f'{client_id}:{client_secret}'.encode('utf-8')).decode('utf-8')
@@ -118,41 +86,37 @@ def init_azure_openai():
             "User": f'{{"appkey": "{app_key}"}}'
         }
         
-        try:
-            token_response = requests.request("POST", url, headers=headers, data=payload)
-            token_response.raise_for_status()  # Raise exception for bad status codes
-            return token_response.json()["access_token"] #return the access token
-        except Exception as e:
-            logger.error(f"Error getting token: {str(e)}")
-            raise
+        token_response = requests.post(url, headers=headers, data=payload, timeout=30)
+        token_response.raise_for_status()
+        last_token_refresh = datetime.now()
+        return token_response.json()["access_token"]
+    except Exception as e:
+        logger.error(f"Error getting token: {str(e)}")
+        raise
 
-    # Try to get a fresh token with retries
-    max_retries = CONFIG['retry']['max_retries']
-    retry_delay = CONFIG['retry']['retry_delay']
-    
-    for attempt in range(max_retries):
-        try:
+def init_azure_openai():
+    """Initialize Azure OpenAI with token refresh"""
+    try:
+        # Check if token needs refresh
+        if datetime.now() - last_token_refresh > TOKEN_REFRESH_INTERVAL:
+            logger.info("Refreshing Azure OpenAI token...")
             access_token = get_fresh_token()
-            llm = AzureChatOpenAI(
-                azure_endpoint='https://chat-ai.cisco.com',
-                api_key=access_token,
-                api_version="2023-08-01-preview",
-                temperature=0,
-                max_tokens=16000,
-                model="gpt-4o-mini",
-                model_kwargs={"user": f'{{"appkey": "{app_key}"}}'}
-            )
-            return llm
-        except Exception as e:
-            if attempt == max_retries - 1:
-                logger.error(f"Failed to initialize Azure OpenAI after {max_retries} attempts: {str(e)}")
-                raise
-            logger.warning(f"Attempt {attempt + 1} failed: {str(e)}. Retrying in {retry_delay} seconds...")
-            time.sleep(retry_delay)
-            
-    raise Exception("Failed to initialize Azure OpenAI")
-
-#llm = init_azure_openai()    
+        else:
+            access_token = get_fresh_token()  # Get initial token
+        
+        llm = AzureChatOpenAI(
+            azure_endpoint='https://chat-ai.cisco.com',
+            api_key=access_token,
+            api_version="2023-08-01-preview",
+            temperature=0,
+            max_tokens=16000,
+            model="gpt-4o-mini",
+            model_kwargs={"user": f'{{"appkey": "{app_key}"}}'}
+        )
+        return llm
+    except Exception as e:
+        logger.error(f"Error initializing Azure OpenAI: {str(e)}")
+        raise
 
 @st.cache_resource
 def init_vector_store():
@@ -671,148 +635,192 @@ def create_workflow(llm, retriever):
     
     return workflow
 
-# --- Main UI ---
+def cleanup_resources():
+    """Clean up resources to prevent memory leaks"""
+    try:
+        # Clear PyTorch cache
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        
+        # Clear any cached resources
+        st.cache_resource.clear()
+        st.cache_data.clear()
+        
+        # Force garbage collection
+        import gc
+        gc.collect()
+        
+        logger.info("Resources cleaned up successfully")
+    except Exception as e:
+        logger.error(f"Error during resource cleanup: {str(e)}")
+
 def main():
-    tab1, tab2 = st.tabs(["AI Knowledge Assistant", "Hypothetical Questions Explorer"])
-    with tab1:
-        st.title("🤖 AI Knowledge Assistant from CX Delivered AI/ML bootcamp material")
-        st.markdown("""
-            Welcome to the AI Knowledge Assistant! This tool uses advanced RAG (Retrieval-Augmented Generation) 
-            to provide accurate and context-aware answers about AI and machine learning concepts.
-        """)
-
+    try:
+        # Clean up resources periodically
+        cleanup_resources()
+        
+        # Initialize components
         try:
-            # Use the already-initialized components
-           # llm = components["llm"]
-            llm = init_azure_openai()
-            retriever = components["retriever"]
-
-            # User input
-            user_query = st.text_input("Ask a question about AI or machine learning:", 
-                                       placeholder="e.g., What is a neural network?")
-
-            if user_query:
-                llm = init_azure_openai()
-                with st.spinner("Processing your question..."):
-                    # Initialize state
-                    initial_state: AgentState = {
-                        "query": user_query,
-                        "expanded_query": user_query,
-                        "context": [],
-                        "response": "",
-                        "precision_score": 0.0,
-                        "groundedness_score": 0.0,
-                        "groundedness_loop_count": 0,
-                        "precision_loop_count": 0,
-                        "feedback": "",
-                        "query_feedback": "",
-                        "loop_max_iter": 3,
-                        "llm": llm,
-                        "retriever": retriever
-                    }
-
-                    workflow = create_workflow(llm, retriever)
-                    app = workflow.compile()
-                    result = app.invoke(initial_state)
-
-                    # Display results
-                    st.subheader("Answer")
-                    st.write(result["response"])
-
-                    # Display metrics
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.metric("Groundedness Score", f"{result['groundedness_score']:.2f}")
-                    with col2:
-                        st.metric("Precision Score", f"{result['precision_score']:.2f}")
-
-                    # --- Show source PPT and chunk info ---
-                    if result.get("context"):
-                        st.markdown("#### Sources Used")
-                        for i, ctx in enumerate(result["context"], 1):
-                            meta = ctx.get("metadata", {})
-                            source = meta.get("source", "Unknown")
-                            chunk_id = meta.get("original_chunk_id", meta.get("chunk_id", "Unknown"))
-                            st.write(f"**{i}. Source:** {source}  \n**Chunk ID:** {chunk_id}")
+            components = initialize_components()
         except Exception as e:
-            st.error(f"An error occurred: {str(e)}")
-            logger.error(f"Application error: {str(e)}")
-    with tab2:
-        st.title("Hypothetical Questions Explorer")
-        st.markdown("""
-            Explore hypothetical questions generated from documents. Browse questions by their source file to understand key concepts and implications.
-        """)
-        with st.spinner("Loading questions from database..."):
-            all_questions_grouped = get_all_questions_by_source()
-        if all_questions_grouped:
-            source_list = list(all_questions_grouped.keys())
-            if not source_list:
-                st.warning("No sources found in the database.")
-            else:
-                source_search = st.text_input(
-                    "Filter sources:",
-                    placeholder="Type to filter source documents...",
-                    help="Enter text to filter source document names"
-                )
-                filtered_sources = source_list
-                if source_search:
-                    filtered_sources = [s for s in source_list if source_search.lower() in s.lower()]
-                if not filtered_sources:
-                    st.warning("No sources match your filter. Try a different search term.")
+            logger.error(f"Failed to initialize components: {str(e)}", exc_info=True)
+            st.error("Failed to initialize application components. Please try refreshing the page.")
+            return
+
+        tab1, tab2 = st.tabs(["AI Knowledge Assistant", "Hypothetical Questions Explorer"])
+        with tab1:
+            st.title("🤖 AI Knowledge Assistant from CX Delivered AI/ML bootcamp material")
+            st.markdown("""
+                Welcome to the AI Knowledge Assistant! This tool uses advanced RAG (Retrieval-Augmented Generation) 
+                to provide accurate and context-aware answers about AI and machine learning concepts.
+            """)
+
+            try:
+                # Use the initialized components
+                llm = init_azure_openai()  # Get fresh LLM instance
+                retriever = components["retriever"]
+
+                # User input
+                user_query = st.text_input("Ask a question about AI or machine learning:", 
+                                           placeholder="e.g., What is a neural network?")
+
+                if user_query:
+                    try:
+                        with st.spinner("Processing your question..."):
+                            # Initialize state
+                            initial_state: AgentState = {
+                                "query": user_query,
+                                "expanded_query": user_query,
+                                "context": [],
+                                "response": "",
+                                "precision_score": 0.0,
+                                "groundedness_score": 0.0,
+                                "groundedness_loop_count": 0,
+                                "precision_loop_count": 0,
+                                "feedback": "",
+                                "query_feedback": "",
+                                "loop_max_iter": 3,
+                                "llm": llm,
+                                "retriever": retriever
+                            }
+
+                            workflow = create_workflow(llm, retriever)
+                            app = workflow.compile()
+                            result = app.invoke(initial_state)
+
+                            # Display results
+                            st.subheader("Answer")
+                            st.write(result["response"])
+
+                            # Display metrics
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.metric("Groundedness Score", f"{result['groundedness_score']:.2f}")
+                            with col2:
+                                st.metric("Precision Score", f"{result['precision_score']:.2f}")
+
+                            # --- Show source PPT and chunk info ---
+                            if result.get("context"):
+                                st.markdown("#### Sources Used")
+                                for i, ctx in enumerate(result["context"], 1):
+                                    meta = ctx.get("metadata", {})
+                                    source = meta.get("source", "Unknown")
+                                    chunk_id = meta.get("original_chunk_id", meta.get("chunk_id", "Unknown"))
+                                    st.write(f"**{i}. Source:** {source}  \n**Chunk ID:** {chunk_id}")
+                    except IOError as e:
+                        logger.error(f"Input/Output error occurred: {str(e)}", exc_info=True)
+                        st.error("An error occurred while processing your question. The application will attempt to recover...")
+                        # Clear any cached resources
+                        st.cache_resource.clear()
+                        # Reinitialize components
+                        components = initialize_components()
+                        st.experimental_rerun()
+                    except Exception as e:
+                        logger.error(f"Unexpected error occurred: {str(e)}", exc_info=True)
+                        st.error("An unexpected error occurred. Please try again or refresh the page.")
+            except Exception as e:
+                logger.error(f"Application error: {str(e)}", exc_info=True)
+                st.error(f"An error occurred: {str(e)}")
+        with tab2:
+            st.title("Hypothetical Questions Explorer")
+            st.markdown("""
+                Explore hypothetical questions generated from documents. Browse questions by their source file to understand key concepts and implications.
+            """)
+            with st.spinner("Loading questions from database..."):
+                all_questions_grouped = get_all_questions_by_source()
+            if all_questions_grouped:
+                source_list = list(all_questions_grouped.keys())
+                if not source_list:
+                    st.warning("No sources found in the database.")
                 else:
-                    selected_source = st.selectbox(
-                        "Select a source document to view its questions:",
-                        options=filtered_sources,
-                        key="source_selectbox"
+                    source_search = st.text_input(
+                        "Filter sources:",
+                        placeholder="Type to filter source documents...",
+                        help="Enter text to filter source document names"
                     )
-                    if selected_source:
-                        questions_for_source = all_questions_grouped[selected_source]
-                        st.subheader(f"Questions from: {selected_source}")
-                        st.caption(f"Total questions: {len(questions_for_source)}")
-                        
-                        # Add global select boxes
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            num_chunks = st.selectbox(
-                                "Number of chunks to display:",
-                                options=list(range(1, len(questions_for_source) + 1)),
-                                index=min(4, len(questions_for_source) - 1),  # Default to 5 or max available
-                                key="num_chunks_select"
-                            )
-                        with col2:
-                            questions_per_chunk = st.selectbox(
-                                "Questions per chunk:",
-                                options=list(range(1, 11)),
-                                index=4,  # Default to 5
-                                key="questions_per_chunk_select"
-                            )
-                        
-                        for i, q in enumerate(questions_for_source[:num_chunks], 1):
-                            with st.expander(f"Question Set {i}", expanded=True):
-                                questions = q['question']
-                                if isinstance(questions, str):
-                                    questions = [qq for qq in questions.split('\n') if qq.strip()]
-                                elif isinstance(questions, list):
-                                    pass
-                                else:
-                                    questions = [str(questions)]
-                                
-                                st.markdown("**Questions:**")
-                                for idx, question in enumerate(questions[:questions_per_chunk]):
-                                    # Remove leading number/period/space (e.g., "1. ", "2. ", etc.)
-                                    clean_question = re.sub(r"^\d+\.\s*", "", question)
-                                    st.markdown(f"{idx+1}. {clean_question}")
-                                st.caption(f"Original Chunk ID: {q.get('original_chunk_id', 'Unknown')}")
-                                st.divider()
-        else:
-            st.error("No questions found in the database. Please ensure the database has been properly initialized.")
-        st.markdown("---")
-        st.markdown("""
-            <div style='text-align: center; color: grey;'>
-                <p>Powered by LangChain, ChromaDB, Sentence Transformers, and Azure OpenAI</p>
-                <p><small>Hypothetical Questions Explorer v1.0</small></p>
-            </div>
-        """, unsafe_allow_html=True)
+                    filtered_sources = source_list
+                    if source_search:
+                        filtered_sources = [s for s in source_list if source_search.lower() in s.lower()]
+                    if not filtered_sources:
+                        st.warning("No sources match your filter. Try a different search term.")
+                    else:
+                        selected_source = st.selectbox(
+                            "Select a source document to view its questions:",
+                            options=filtered_sources,
+                            key="source_selectbox"
+                        )
+                        if selected_source:
+                            questions_for_source = all_questions_grouped[selected_source]
+                            st.subheader(f"Questions from: {selected_source}")
+                            st.caption(f"Total questions: {len(questions_for_source)}")
+                            
+                            # Add global select boxes
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                num_chunks = st.selectbox(
+                                    "Number of chunks to display:",
+                                    options=list(range(1, len(questions_for_source) + 1)),
+                                    index=min(4, len(questions_for_source) - 1),  # Default to 5 or max available
+                                    key="num_chunks_select"
+                                )
+                            with col2:
+                                questions_per_chunk = st.selectbox(
+                                    "Questions per chunk:",
+                                    options=list(range(1, 11)),
+                                    index=4,  # Default to 5
+                                    key="questions_per_chunk_select"
+                                )
+                            
+                            for i, q in enumerate(questions_for_source[:num_chunks], 1):
+                                with st.expander(f"Question Set {i}", expanded=True):
+                                    questions = q['question']
+                                    if isinstance(questions, str):
+                                        questions = [qq for qq in questions.split('\n') if qq.strip()]
+                                    elif isinstance(questions, list):
+                                        pass
+                                    else:
+                                        questions = [str(questions)]
+                                    
+                                    st.markdown("**Questions:**")
+                                    for idx, question in enumerate(questions[:questions_per_chunk]):
+                                        # Remove leading number/period/space (e.g., "1. ", "2. ", etc.)
+                                        clean_question = re.sub(r"^\d+\.\s*", "", question)
+                                        st.markdown(f"{idx+1}. {clean_question}")
+                                    st.caption(f"Original Chunk ID: {q.get('original_chunk_id', 'Unknown')}")
+                                    st.divider()
+            else:
+                st.error("No questions found in the database. Please ensure the database has been properly initialized.")
+            st.markdown("---")
+            st.markdown("""
+                <div style='text-align: center; color: grey;'>
+                    <p>Powered by LangChain, ChromaDB, Sentence Transformers, and Azure OpenAI</p>
+                    <p><small>Hypothetical Questions Explorer v1.0</small></p>
+                </div>
+            """, unsafe_allow_html=True)
+    except Exception as e:
+        logger.error(f"Fatal error in main: {str(e)}", exc_info=True)
+        cleanup_resources()  # Attempt cleanup on fatal error
+        st.error("A fatal error occurred. Please refresh the page.")
 
 if __name__ == "__main__":
     main()
