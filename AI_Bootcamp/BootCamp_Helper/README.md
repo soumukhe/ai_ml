@@ -1,10 +1,120 @@
-# AI Knowledge Assistant - CX Delivered AI/ML Bootcamp
+# AI Knowledge Assistant
 
-![AI Assistant](https://img.shields.io/badge/AI-Assistant-blue)
-![Streamlit](https://img.shields.io/badge/Streamlit-Web%20App-green)
-![LangGraph](https://img.shields.io/badge/LangGraph-Workflow-orange)
+An AI-powered knowledge assistant that uses RAG (Retrieval-Augmented Generation) to provide accurate and context-aware answers about AI and machine learning concepts from the CX Delivered AI/ML bootcamp material.
 
-A sophisticated AI-powered knowledge assistant built using Streamlit, LangGraph, and advanced language models. This application provides intelligent responses to queries about AI and machine learning concepts from the CX Delivered AI/ML bootcamp material.
+## Workflow Graph
+
+The application follows this workflow for processing queries:
+
+```mermaid
+graph TD;
+        __start__([<p>__start__</p>]):::first
+        modify_query(modify_query)
+        check_query_relevance(check_query_relevance)
+        retrieve_hypothetical_questions(retrieve_hypothetical_questions)
+        retrieve_context(retrieve_context)
+        check_context_exists(check_context_exists)
+        no_context_response(no_context_response)
+        craft_response(craft_response)
+        score_groundedness(score_groundedness)
+        refine_response(refine_response)
+        check_precision(check_precision)
+        refine_query(refine_query)
+        max_iterations_reached(max_iterations_reached)
+        __end__([<p>__end__</p>]):::last
+        __start__ --> modify_query;
+        check_context_exists -. &nbsp;yes&nbsp; .-> craft_response;
+        check_context_exists -. &nbsp;no&nbsp; .-> no_context_response;
+        check_precision -.-> max_iterations_reached;
+        check_precision -.-> refine_query;
+        check_query_relevance -. &nbsp;irrelevant&nbsp; .-> no_context_response;
+        check_query_relevance -. &nbsp;relevant&nbsp; .-> retrieve_hypothetical_questions;
+        craft_response --> score_groundedness;
+        modify_query --> check_query_relevance;
+        refine_query --> retrieve_hypothetical_questions;
+        refine_response --> craft_response;
+        retrieve_context --> check_context_exists;
+        retrieve_hypothetical_questions --> retrieve_context;
+        score_groundedness -.-> check_precision;
+        score_groundedness -.-> max_iterations_reached;
+        score_groundedness -. &nbsp;not_grounded&nbsp; .-> no_context_response;
+        score_groundedness -.-> refine_response;
+        check_context_exists -.-> __end__;
+        max_iterations_reached --> __end__;
+        no_context_response --> __end__;
+```
+
+## Features
+
+- **Query Relevance Check**: Ensures only AI/ML related questions are processed
+- **Hypothetical Question Generation**: Expands queries to capture related concepts
+- **Context-Aware Responses**: Uses RAG to provide accurate, contextual answers
+- **Response Quality Control**: 
+  - Groundedness scoring ensures responses are based on actual context
+  - Precision checking verifies answers directly address the query
+  - Automatic response refinement when quality thresholds aren't met
+- **Interactive UI**: Streamlit-based interface with:
+  - Main AI Knowledge Assistant tab for queries
+  - Hypothetical Questions Explorer for browsing training data
+
+## Technical Components
+
+- **Framework**: Streamlit
+- **LLM**: Azure OpenAI (GPT-4)
+- **Embeddings**: Sentence Transformers (all-mpnet-base-v2)
+- **Vector Store**: ChromaDB
+- **Workflow Management**: LangGraph
+
+## Running the Application
+
+1. Ensure all dependencies are installed:
+```bash
+pip install -r requirements.txt
+```
+
+2. Set up environment variables in `.env`:
+```
+app_key=<your_app_key>
+client_id=<your_client_id>
+client_secret=<your_client_secret>
+LANGSMITH_API_KEY=<your_langsmith_key>
+```
+
+3. Run the application:
+```bash
+streamlit run app.py
+```
+
+4. Access the application at http://localhost:8501
+
+## Workflow Description
+
+1. **Query Processing**:
+   - Incoming queries are first modified to include AI/ML context if needed
+   - Queries are checked for relevance to AI/ML topics
+   - Irrelevant queries are rejected early
+
+2. **Context Retrieval**:
+   - Relevant queries trigger hypothetical question generation
+   - Context is retrieved from the vector store
+   - If no context is found, a no-context response is generated
+
+3. **Response Generation**:
+   - Responses are crafted using retrieved context
+   - Groundedness and precision scores are calculated
+   - Responses can be refined based on quality metrics
+
+4. **Quality Control Loops**:
+   - Responses below groundedness threshold trigger refinement
+   - Low precision scores lead to query refinement
+   - Maximum iteration limits prevent infinite loops
+
+## Notes
+
+- The application is specifically designed for AI/ML related queries
+- Responses are grounded in the bootcamp material
+- The system includes automatic quality checks and refinement loops
+- All responses are generated with context from verified sources
 
 ## 🚀 Features
 
