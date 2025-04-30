@@ -353,6 +353,32 @@ def retrieve_context(state: AgentState) -> AgentState:
 #     return state
 
 def craft_response(state: AgentState) -> AgentState:
+    """
+    Crafts a response based on the retrieved context and query.
+    
+    Args:
+        state (AgentState): The current state containing the query and context
+        
+    Returns:
+        AgentState: The state with the crafted response
+    """
+    # Check if query is actually about AI/ML
+    ai_ml_keywords = [
+        'ai/ml', 'ai/ml network', 'ai network', 'ml network',
+        'machine learning', 'artificial intelligence', 'nvidia',
+        'fabric', 'architecture', 'network architecture',
+        'networking', 'nvme', 'storage', 'neural network',
+        'deep learning', 'model', 'training', 'inference',
+        'gpu', 'tensor', 'pipeline', 'data science'
+    ]
+    
+    query = state['query'].lower()
+    is_ai_ml_query = any(keyword in query for keyword in ai_ml_keywords)
+    
+    if not is_ai_ml_query:
+        state['response'] = "I'm sorry, but I can only answer questions about AI and machine learning concepts, particularly in the context of network architectures and infrastructure. Your question appears to be outside this scope. Please ask about AI/ML topics instead."
+        return state
+    
     llm = init_azure_openai()
     
     system_message = '''You are an expert in AI and machine learning. Using the provided context, generate a clear, detailed, and accurate response to the query. 
@@ -499,7 +525,14 @@ def no_context_response(state: AgentState) -> AgentState:
     Returns:
         AgentState: The state with a context-specific response
     """
-    state['response'] = "I'm here to help with questions about AI and machine learning concepts, particularly in the context of network architectures and infrastructure. Could you please rephrase your question to focus on AI/ML topics, or ask about a different aspect of AI/ML technology?"
+    # If groundedness score is 0, the question is likely completely unrelated
+    if state.get('groundedness_score', 0.0) == 0.0:
+        state['response'] = "I'm sorry, but I can only answer questions about AI and machine learning concepts, particularly in the context of network architectures and infrastructure. Your question appears to be outside this scope. Please ask about AI/ML topics instead."
+    else:
+        # Otherwise, no context was found but the query might be relevant
+        state['response'] = "I couldn't find specific information about this topic in the AI/ML bootcamp material. Could you please rephrase your question to focus on AI/ML concepts, or ask about a different aspect of AI/ML technology?"
+    
+    logger.info(f"No context response generated for query: {state['query']}")
     return state
 
 def not_relevant_response(state: AgentState) -> AgentState:
@@ -547,22 +580,8 @@ def modify_query_for_context(state: AgentState) -> AgentState:
         'networking', 'nvme', 'storage'
     ]
     
-    # Keywords that indicate completely unrelated topics
-    unrelated_keywords = [
-        'eagle', 'bird', 'animal', 'sports', 'weather', 'food',
-        'music', 'movie', 'game', 'sport', 'travel', 'history',
-        'geography', 'politics', 'religion', 'art', 'literature'
-    ]
-    
     original_query = state['query']
     query = original_query.lower()
-    
-    # First check if the query is completely unrelated
-    if any(keyword in query for keyword in unrelated_keywords):
-        logger.info(f"Query is unrelated to AI/ML: {original_query}")
-        state['query'] = "This is an unrelated topic. Please ask about AI/ML concepts."
-        state['expanded_query'] = state['query']
-        return state
     
     # Check for multiple keywords or specific phrases
     keyword_count = sum(1 for keyword in context_keywords if keyword in query)
@@ -590,13 +609,13 @@ def create_workflow(llm, retriever):
     
     # Add all nodes
     workflow.add_node("modify_query", modify_query_for_context)
+    workflow.add_node("check_query_relevance", check_query_relevance)
     workflow.add_node("retrieve_hypothetical_questions", retrieve_hypothetical_questions)
     workflow.add_node("retrieve_context", retrieve_context)
     workflow.add_node("check_context_exists", check_context_exists)
     workflow.add_node("no_context_response", no_context_response)
     workflow.add_node("craft_response", craft_response)
     workflow.add_node("score_groundedness", score_groundedness)
-    workflow.add_node("not_relevant_response", not_relevant_response)
     workflow.add_node("refine_response", refine_response)
     workflow.add_node("check_precision", check_precision)
     workflow.add_node("refine_query", refine_query)
@@ -604,11 +623,22 @@ def create_workflow(llm, retriever):
     
     # Define the workflow edges
     workflow.add_edge(START, "modify_query")
-    workflow.add_edge("modify_query", "retrieve_hypothetical_questions")
+    workflow.add_edge("modify_query", "check_query_relevance")
+    
+    # Add conditional edges for query relevance check
+    workflow.add_conditional_edges(
+        "check_query_relevance",
+        lambda state: "relevant" if is_ai_ml_query(state['query']) else "irrelevant",
+        {
+            "relevant": "retrieve_hypothetical_questions",
+            "irrelevant": "no_context_response"
+        }
+    )
+    
     workflow.add_edge("retrieve_hypothetical_questions", "retrieve_context")
     workflow.add_edge("retrieve_context", "check_context_exists")
     
-    # Add conditional edges
+    # Add conditional edges for context check
     workflow.add_conditional_edges(
         "check_context_exists",
         has_context,
@@ -625,14 +655,13 @@ def create_workflow(llm, retriever):
         "score_groundedness",
         check_if_grounded,
         {
-            "not_grounded": "not_relevant_response",
+            "not_grounded": "no_context_response",
             "check_precision": "check_precision",
             "refine_response": "refine_response",
             "max_iterations_reached": "max_iterations_reached"
         }
     )
     
-    workflow.add_edge("not_relevant_response", END)
     workflow.add_edge("refine_response", "craft_response")
     
     workflow.add_conditional_edges(
@@ -649,6 +678,43 @@ def create_workflow(llm, retriever):
     workflow.add_edge("max_iterations_reached", END)
     
     return workflow
+
+def is_ai_ml_query(query: str) -> bool:
+    """
+    Checks if the query is about AI/ML topics.
+    
+    Args:
+        query (str): The user's query
+        
+    Returns:
+        bool: True if the query is about AI/ML, False otherwise
+    """
+    ai_ml_keywords = [
+        'ai/ml', 'ai/ml network', 'ai network', 'ml network',
+        'machine learning', 'artificial intelligence', 'nvidia',
+        'fabric', 'architecture', 'network architecture',
+        'networking', 'nvme', 'storage', 'neural network',
+        'deep learning', 'model', 'training', 'inference',
+        'gpu', 'tensor', 'pipeline', 'data science'
+    ]
+    
+    query = query.lower()
+    return any(keyword in query for keyword in ai_ml_keywords)
+
+def check_query_relevance(state: AgentState) -> AgentState:
+    """
+    Checks if the query is relevant to AI/ML topics.
+    
+    Args:
+        state (AgentState): The current state
+        
+    Returns:
+        AgentState: The updated state
+    """
+    if not is_ai_ml_query(state['query']):
+        state['response'] = "I'm sorry, but I can only answer questions about AI and machine learning concepts, particularly in the context of network architectures and infrastructure. Your question appears to be outside this scope. Please ask about AI/ML topics instead."
+        state['groundedness_score'] = 0.0  # Set groundedness score to 0 for irrelevant queries
+    return state
 
 def cleanup_resources():
     """Clean up resources to prevent memory leaks"""
