@@ -810,15 +810,30 @@ def main():
                                     st.write(f"**{i}. Source:** {source}  \n**Chunk ID:** {chunk_id}")
                     except IOError as e:
                         logger.error(f"Input/Output error occurred: {str(e)}", exc_info=True)
-                        st.error("An error occurred while processing your question. The application will attempt to recover...")
+                        st.error("An error occurred while processing your question. Please wait while we refresh the connection...")
                         # Clear any cached resources
                         st.cache_resource.clear()
-                        # Reinitialize components
-                        components = initialize_components()
-                        st.experimental_rerun()
+                        st.cache_data.clear()
+                        # Get fresh token and reinitialize components
+                        try:
+                            components = initialize_components()
+                            st.rerun()
+                        except Exception as refresh_error:
+                            logger.error(f"Error during refresh: {str(refresh_error)}", exc_info=True)
+                            st.error("Could not reconnect. Please refresh the page manually.")
                     except Exception as e:
                         logger.error(f"Unexpected error occurred: {str(e)}", exc_info=True)
-                        st.error("An unexpected error occurred. Please try again or refresh the page.")
+                        if "token" in str(e).lower() or "unauthorized" in str(e).lower():
+                            st.error("Session expired. Please wait while we refresh the connection...")
+                            st.cache_resource.clear()
+                            st.cache_data.clear()
+                            try:
+                                components = initialize_components()
+                                st.rerun()
+                            except:
+                                st.error("Could not reconnect. Please refresh the page manually.")
+                        else:
+                            st.error("An unexpected error occurred. Please try again or refresh the page.")
             except Exception as e:
                 logger.error(f"Application error: {str(e)}", exc_info=True)
                 st.error(f"An error occurred: {str(e)}")
