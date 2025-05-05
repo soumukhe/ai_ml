@@ -68,6 +68,33 @@ streamlit run app_OpenAI.sh
 
 A powerful Streamlit application for analyzing and processing solutions domain data with advanced NLP capabilities. The application supports both OpenAI and BridgeIT authentication methods.
 
+## Project Structure
+
+**Key Files:**
+- `app_BIT.py` — Main Streamlit application (BridgeIT version)
+- `login.py` — Handles user authentication and login logic
+- `file_manager.py` — Manages file uploads, downloads, and user file operations
+- `user_manager.py` — Manages user directories and user-specific data
+- `requirements.txt` — Python dependencies
+- `run_app_BIT.sh` — Shell script to launch the app
+- `README.md` — This documentation
+
+**Key Directories:**
+- `user_data/` — Stores all user-specific data, including uploads, processed files, and reports.  
+  - This directory is **automatically created by the app** if it does not exist.
+  - Subdirectories are created for each user (e.g., `user_data/<username>/uploads/`, `user_data/<username>/temp/`, `user_data/<username>/reports/`).
+- `reports/` — Stores generated markdown reports (global, not user-specific).
+- `data/` — Example or template data files for testing or demo purposes.
+- `backups/` — Stores backup files and old versions (not required for normal operation).
+- `tempData/` — Temporary files used during processing.
+
+**Other:**
+- `__pycache__/` — Python cache files (auto-generated, can be ignored).
+
+**Note:**
+- The app will automatically create `user_data/` and all necessary subdirectories for each user on first use.  
+- You do **not** need to manually create these directories.
+
 ## Models Used
 
 ### Local Models (No External API Calls)
