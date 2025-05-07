@@ -70,12 +70,15 @@ class EmbeddingWrapper:
 
 # Add token refresh tracking
 last_token_refresh = datetime.now()
-TOKEN_REFRESH_INTERVAL = timedelta(hours=4)  # Refresh token every 4 hours
+TOKEN_REFRESH_INTERVAL = timedelta(hours=1)  # or whatever your token lifetime is
+
+# Add this near the top with other globals
+current_token = None
 
 def get_fresh_token():
-    """Get a fresh token from Azure OpenAI"""
-    global last_token_refresh
+    global last_token_refresh, current_token
     try:
+        logger.info("Fetching a new token from Azure OpenAI...")
         url = "https://id.cisco.com/oauth2/default/v1/token"
         payload = "grant_type=client_credentials"
         value = base64.b64encode(f'{client_id}:{client_secret}'.encode('utf-8')).decode('utf-8')
@@ -85,14 +88,23 @@ def get_fresh_token():
             "Authorization": f"Basic {value}",
             "User": f'{{"appkey": "{app_key}"}}'
         }
-        
         token_response = requests.post(url, headers=headers, data=payload, timeout=30)
         token_response.raise_for_status()
+        token = token_response.json()["access_token"]
         last_token_refresh = datetime.now()
-        return token_response.json()["access_token"]
+        current_token = token  # Store the token
+        logger.info(f"New token fetched at {last_token_refresh}")
+        return token
     except Exception as e:
-        logger.error(f"Error getting token: {str(e)}")
+        logger.error(f"Error getting token: {str(e)}", exc_info=True)
         raise
+
+def get_valid_token():
+    global last_token_refresh, current_token
+    if current_token is None or datetime.now() - last_token_refresh > TOKEN_REFRESH_INTERVAL:
+        return get_fresh_token()
+    else:
+        return current_token
 
 def init_azure_openai():
     """Initialize Azure OpenAI with token refresh"""
@@ -100,9 +112,9 @@ def init_azure_openai():
         # Check if token needs refresh
         if datetime.now() - last_token_refresh > TOKEN_REFRESH_INTERVAL:
             logger.info("Refreshing Azure OpenAI token...")
-            access_token = get_fresh_token()
+            access_token = get_valid_token()
         else:
-            access_token = get_fresh_token()  # Get initial token
+            access_token = get_valid_token()  # Get initial token
         
         llm = AzureChatOpenAI(
             azure_endpoint='https://chat-ai.cisco.com',
@@ -808,19 +820,25 @@ def main():
                                     source = meta.get("source", "Unknown")
                                     chunk_id = meta.get("original_chunk_id", meta.get("chunk_id", "Unknown"))
                                     st.write(f"**{i}. Source:** {source}  \n**Chunk ID:** {chunk_id}")
+
+                            # After a successful result (after displaying the answer):
+                            st.session_state["retry_count"] = 0
                     except IOError as e:
                         logger.error(f"Input/Output error occurred: {str(e)}", exc_info=True)
-                        st.error("An error occurred while processing your question. Please wait while we refresh the connection...")
-                        # Clear any cached resources
-                        st.cache_resource.clear()
-                        st.cache_data.clear()
-                        # Get fresh token and reinitialize components
-                        try:
-                            components = initialize_components()
-                            st.rerun()
-                        except Exception as refresh_error:
-                            logger.error(f"Error during refresh: {str(refresh_error)}", exc_info=True)
-                            st.error("Could not reconnect. Please refresh the page manually.")
+                        st.session_state["retry_count"] += 1
+                        if st.session_state["retry_count"] > 2:
+                            st.error("Automatic recovery failed. Please refresh the page manually.")
+                        else:
+                            st.error("An error occurred while processing your question. Please wait while we refresh the connection...")
+                            st.cache_resource.clear()
+                            st.cache_data.clear()
+                            try:
+                                logger.info("Attempting to reinitialize components and rerun after error...")
+                                components = initialize_components()
+                                st.rerun()
+                            except Exception as refresh_error:
+                                logger.error(f"Error during refresh: {str(refresh_error)}", exc_info=True)
+                                st.error("Could not reconnect. Please refresh the page manually.")
                     except Exception as e:
                         logger.error(f"Unexpected error occurred: {str(e)}", exc_info=True)
                         if "token" in str(e).lower() or "unauthorized" in str(e).lower():
